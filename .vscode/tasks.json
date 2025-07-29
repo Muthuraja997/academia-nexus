@@ -1,0 +1,16 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Scholarship MCP Server",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"scholarship_mcp_server.py"
+			],
+			"group": "none",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}
