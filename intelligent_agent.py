@@ -5,7 +5,7 @@ import json
 import os
 
 # 🔑 Configure Gemini API
-genai.configure(api_key="XXXXXXXXXXXXXXXXXXXXXXXX")
+genai.configure(api_key="AIzaSyAvI5VvIAOfte5XU8r1mZJ_vIF5G8EyMUM")
 model = genai.GenerativeModel(model_name="gemini-2.5-pro")
 
 # ✅ Clean and fetch webpage
