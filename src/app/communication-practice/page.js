@@ -74,19 +74,28 @@ const CommunicationPracticePage = () => {
         }
     };
 
-    // Function to simulate getting AI feedback.
-    const getAIFeedback = () => {
+    // Function to get real AI feedback from the MCP server
+    const getAIFeedback = async () => {
         setIsLoadingFeedback(true);
         setFeedback(null);
-        setTimeout(() => {
-            setFeedback({
-                clarity: 'Good',
-                confidence: 'Excellent',
-                fillerWords: ['um', 'like'],
-                suggestion: 'Great job! Try to be more concise at the beginning. Your confidence was very strong throughout.'
+        setError('');
+        try {
+            const response = await fetch('http://localhost:8080/getCommunicationFeedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ transcript })
             });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `Server responded with status: ${response.status}`);
+            }
+            const data = await response.json();
+            setFeedback(data);
+        } catch (err) {
+            setError(err.message || 'Failed to get AI feedback.');
+        } finally {
             setIsLoadingFeedback(false);
-        }, 2000);
+        }
     };
 
     if (!isSessionActive) {
