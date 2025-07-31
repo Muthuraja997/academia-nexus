@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# 🎓 Academia Nexus: An AI-Powered Student Success Platform
 
-## Getting Started
+This is a **Next.js** project bootstrapped with `create-next-app`. It is extended with a **Python Flask backend** to create a **full-stack, AI-driven student assistant platform**.
 
-First, run the development server:
+---
+
+## 🚀 About The Project
+
+**Academia Nexus** is a comprehensive web application designed to serve as an all-in-one assistant for college students. The platform integrates multiple **intelligent agents** to provide **personalized support** in academics, career planning, and skill development.
+
+---
+
+## ✨ Features
+
+- 👤 **User Authentication**: Secure Register & Login pages.
+- 📊 **Main Dashboard**: A central hub with deadlines and career predictions.
+- ✍️ **Test Agent**: Take practice quizzes.
+- 📈 **Career Path Agent**: Predictive agent suggesting career paths.
+- 👔 **Interview Prep Agent**: Generates questions based on company and job role.
+- 🎙️ **Communication Practice Agent**: Voice-based interview practice with AI feedback.
+- 🧠 **Scholarship Agent**: Gemini-powered agent that scrapes and suggests scholarship opportunities.
+
+---
+
+## 🛠️ Tech Stack
+
+| Category     | Technology                              |
+|--------------|------------------------------------------|
+| Frontend     | Next.js (React), Tailwind CSS           |
+| Backend      | Python, Flask (API Server)              |
+| AI / ML      | Google Gemini API                       |
+| Web Scraping | BeautifulSoup, Requests                 |
+
+---
+
+## 🔑 Key Methodologies
+
+> A core principle of this project is the use of a **Model Context Protocol (MCP)** to interact with the Gemini LLM. Instead of sending raw prompts, we structure rich context (like student profiles) to ensure **accurate and consistent JSON responses**.
+
+---
+
+## 🧑‍💻 Getting Started
+
+To run the project locally, you need to start both the **frontend** and **backend** servers.
+
+### ✅ Prerequisites
+
+- Node.js (v18 or later)
+- Python (v3.9 or later)
+- Google Gemini API Key
+
+---
+
+## 🧩 Installation & Setup
+
+### 1. Clone the Repository
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/your-username/academia-nexus.git
+cd academia-nexus
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Setup the Frontend (Terminal 1)
+```bash
+# Install dependencies
+npm install
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+# Run development server
+npm run dev
+Then open http://localhost:3000 in your browser.
+```
+3. Setup the Backend (Terminal 2)
+```bash
+# Create and activate a virtual environment
+python -m venv venv
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# On Windows
+.\venv\Scripts\activate
 
-## Learn More
+# Install backend dependencies
+pip install Flask Flask-Cors google-generativeai requests beautifulsoup4
 
-To learn more about Next.js, take a look at the following resources:
+# Set your Google Gemini API key in intelligent_agent.py
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Run the Flask backend
+python intelligent_agent.py
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 📚 Learn More
+- Next.js Documentation – Features and APIs.
 
-## Deploy on Vercel
+- Learn Next.js – Interactive tutorial.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 🚀 Deployment
+- The recommended way to deploy this app is using Vercel, the creators of Next.js.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- For detailed deployment steps, refer to the Next.js deployment documentation.

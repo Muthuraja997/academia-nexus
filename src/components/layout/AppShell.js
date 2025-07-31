@@ -23,7 +23,7 @@ const pageTitles = {
 const AppShell = ({ children }) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const pathname = usePathname();
-    const title = pageTitles[pathname] || 'Academia Nexus';
+    const title = pageTitles[pathname] || 'Academia AIwithus';
 
     return (
         <div className="min-h-screen font-sans">
