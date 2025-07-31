@@ -69,7 +69,7 @@ npm install
 npm run dev
 Then open http://localhost:3000 in your browser.
 ```
-3. Setup the Backend (Terminal 2)
+### 3. Setup the Backend (Terminal 2)
 ```bash
 # Create and activate a virtual environment
 python -m venv venv
