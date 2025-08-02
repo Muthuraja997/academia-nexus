@@ -1,13 +1,9 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useData } from '@/contexts/DataContext';
 import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
 
 const TestAgentPage = () => {
-    const { user } = useAuth();
-    const { trackActivity, testResults } = useData();
     const [isTestActive, setIsTestActive] = useState(false);
     const [currentTest, setCurrentTest] = useState(null);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -146,21 +142,6 @@ const TestAgentPage = () => {
                 timestamp: new Date().toISOString()
             };
 
-            // Track test completion in data context
-            if (user) {
-                const scorePercentage = Math.round((results.correct_count / currentTest.questions.length) * 100);
-                await trackActivity('test_completed', {
-                    test_title: currentTest.test_title,
-                    company: currentTest.company,
-                    role: currentTest.role,
-                    total_questions: currentTest.questions.length,
-                    correct_answers: results.correct_count,
-                    score_percentage: scorePercentage,
-                    time_taken: currentTest.time_limit - (timeLeft || 0),
-                    difficulty_level: results.difficulty_level || 'intermediate'
-                });
-            }
-
             // Save results to localStorage for interview prep page
             localStorage.setItem('testResults', JSON.stringify(completeResults));
             localStorage.setItem('hasNewTestResults', 'true');
@@ -290,9 +271,6 @@ const TestAgentPage = () => {
                 <div>
                     <h1 className="text-3xl font-bold text-gray-800">🧪 Test Center</h1>
                     <p className="text-gray-600">Practice with company-specific assessments</p>
-                    <p className="text-sm text-gray-500 mt-1">
-                        {testResults.length} tests completed
-                    </p>
                 </div>
                 <Button 
                     onClick={() => setShowCreateTest(true)}
