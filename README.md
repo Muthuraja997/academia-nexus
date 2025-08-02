@@ -119,9 +119,13 @@ npm install
 # Start development server
 npm run dev
 ```
+<<<<<<< HEAD
 *Application will be available at `http://localhost:3000`*
 
 #### 3. **Backend Setup**
+=======
+### 3. Setup the Backend (Terminal 2)
+>>>>>>> ae67b5ce755513a4880aa13a7941d3a311249724
 ```bash
 # Create virtual environment
 python -m venv venv
