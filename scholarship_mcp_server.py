@@ -6,12 +6,16 @@ import os
 from typing import Dict, Any, List
 import uvicorn
 import re
+from security_config import get_gemini_api_key
 
 # Ensure app and model are defined before any endpoint
 app = FastAPI()
 
 # Configure Gemini AI
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyAvI5VvIAOfte5XU8r1mZJ_vIF5G8EyMUM")
+GEMINI_API_KEY = get_gemini_api_key()
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY environment variable is required. Please add it to your .env file.")
+
 MODEL_NAME = "gemini-2.5-pro"
 
 genai.configure(api_key=GEMINI_API_KEY)

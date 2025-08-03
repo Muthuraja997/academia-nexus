@@ -133,7 +133,26 @@ npm run dev
 <<<<<<< HEAD
 *Application will be available at `http://localhost:3000`*
 
-#### 3. **Backend Setup**
+#### 3. **Environment Configuration**
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Edit .env file and add your API keys
+nano .env  # or use your preferred editor
+
+# Test environment configuration
+python test_env_config.py
+```
+
+**Required Environment Variables:**
+```bash
+GEMINI_API_KEY=your_actual_gemini_api_key_here
+```
+
+*Get your Gemini API key from [Google AI Studio](https://aistudio.google.com/app/apikey)*
+
+#### 4. **Backend Setup**
 =======
 ### 3. Setup the Backend (Terminal 2)
 >>>>>>> ae67b5ce755513a4880aa13a7941d3a311249724
@@ -148,10 +167,10 @@ python -m venv venv
 source venv/bin/activate
 
 # Install dependencies
-pip install Flask Flask-Cors google-generativeai requests beautifulsoup4 sqlite3
+pip install Flask Flask-Cors google-generativeai requests beautifulsoup4 sqlite3 python-dotenv
 
-# Configure API key in intelligent_agent.py
-export GEMINI_API_KEY="your-api-key-here"
+# Test environment configuration
+python test_env_config.py
 
 # Start main Flask server
 python intelligent_agent.py
@@ -163,7 +182,7 @@ python study_mcp_http_server.py --port 8081
 *Backend will run on `http://localhost:8080`*
 *MCP servers will run on ports 8080 and 8081*
 
-#### 4. **Database Setup**
+#### 5. **Database Setup**
 ```bash
 # Configure MySQL credentials in .env.local
 # See database/MYSQL_SETUP.md for detailed instructions
@@ -242,6 +261,13 @@ academia-nexus/
 - ✅ Company-specific interview questions with detailed solutions
 - ✅ Career path predictions based on activity patterns
 - ✅ Personalized scholarship matching and recommendations
+
+### **Security & Environment Management**
+- 🔐 **Centralized API key management** through environment variables
+- 🛡️ **No hardcoded secrets** in source code
+- 🔒 **Automatic validation** of required environment variables
+- 📝 **Comprehensive environment testing** with test_env_config.py
+- 🚫 **Secure .env handling** (excluded from version control)
 
 ### **Enhanced User Experience**
 - ✅ Responsive design with dark mode support

@@ -3,9 +3,14 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import os
+from security_config import get_gemini_api_key
 
 # 🔑 Configure Gemini API
-genai.configure(api_key="AIzaSyAvI5VvIAOfte5XU8r1mZJ_vIF5G8EyMUM")
+GEMINI_API_KEY = get_gemini_api_key()
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY environment variable is required. Please add it to your .env file.")
+
+genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel(model_name="gemini-2.5-pro")
 
 # ✅ Clean and fetch webpage

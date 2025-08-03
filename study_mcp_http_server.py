@@ -14,23 +14,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 import google.generativeai as genai
+from security_config import get_gemini_api_key
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Configure Gemini AI
-# You can set your API key as an environment variable: GEMINI_API_KEY
-# Or replace 'your-api-key-here' with your actual API key
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'your-api-key-here')
-if GEMINI_API_KEY and GEMINI_API_KEY != 'your-api-key-here':
+GEMINI_API_KEY = get_gemini_api_key()
+if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
     model = genai.GenerativeModel('gemini-pro')
     GEMINI_AVAILABLE = True
     logger.info("Gemini AI configured successfully")
 else:
     GEMINI_AVAILABLE = False
-    logger.warning("Gemini API key not found. Using fallback knowledge base.")
+    logger.warning("GEMINI_API_KEY environment variable not found. Using fallback knowledge base.")
 
 # Import the fallback study server functions
 from study_mcp_server import search_knowledge_base, STUDY_KNOWLEDGE_BASE

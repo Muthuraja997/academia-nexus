@@ -596,41 +596,55 @@ const DashboardPage = () => {
             </div>
 
             {/* Quick Actions */}
-            <Card className="p-6">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                    🚀 Quick Actions
+            <Card className="p-6 bg-gradient-to-br from-white to-blue-50 dark:from-gray-800 dark:to-gray-900 border-blue-200 dark:border-gray-700">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                    <span className="text-2xl">🚀</span>
+                    Quick Actions
                 </h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                    <Link href="/study">
-                        <Button className="w-full">
-                            📚 Study Assistant
-                        </Button>
+                <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
+                    <Link href="/study" className="group block">
+                        <div className="quick-action-button bg-blue-600 hover:bg-blue-700 text-white rounded-xl p-4 h-24 flex flex-col items-center justify-center text-center transition-all duration-300 transform group-hover:scale-105 group-hover:shadow-xl quick-action-glow">
+                            <div className="text-2xl mb-1">📚</div>
+                            <div className="text-sm font-medium">Study Assistant</div>
+                        </div>
                     </Link>
-                    <Link href="/communication-practice">
-                        <Button variant="secondary" className="w-full">
-                            💬 Communication
-                        </Button>
+                    <Link href="/communication-practice" className="group block">
+                        <div className="quick-action-button bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl p-4 h-24 flex flex-col items-center justify-center text-center transition-all duration-300 transform group-hover:scale-105 group-hover:shadow-xl">
+                            <div className="text-2xl mb-1">💬</div>
+                            <div className="text-sm font-medium">Communication</div>
+                        </div>
                     </Link>
-                    <Link href="/tests">
-                        <Button variant="secondary" className="w-full">
-                            📝 Take Test
-                        </Button>
+                    <Link href="/tests" className="group block">
+                        <div className="quick-action-button bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl p-4 h-24 flex flex-col items-center justify-center text-center transition-all duration-300 transform group-hover:scale-105 group-hover:shadow-xl">
+                            <div className="text-2xl mb-1">📝</div>
+                            <div className="text-sm font-medium">Take Test</div>
+                        </div>
                     </Link>
-                    <Link href="/interview-prep">
-                        <Button variant="outline" className="w-full">
-                            🎤 Interview Prep
-                        </Button>
+                    <Link href="/interview-prep" className="group block">
+                        <div className="quick-action-button bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl p-4 h-24 flex flex-col items-center justify-center text-center transition-all duration-300 transform group-hover:scale-105 group-hover:shadow-xl">
+                            <div className="text-2xl mb-1">🎤</div>
+                            <div className="text-sm font-medium">Interview Prep</div>
+                        </div>
                     </Link>
-                    <Link href="/career-path">
-                        <Button variant="outline" className="w-full">
-                            🎯 Career Analysis
-                        </Button>
+                    <Link href="/career-path" className="group block">
+                        <div className="quick-action-button bg-gradient-to-br from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-xl p-4 h-24 flex flex-col items-center justify-center text-center transition-all duration-300 transform group-hover:scale-105 group-hover:shadow-xl">
+                            <div className="text-2xl mb-1">🎯</div>
+                            <div className="text-sm font-medium">Career Analysis</div>
+                        </div>
                     </Link>
-                    <Link href="/scholarships">
-                        <Button variant="outline" className="w-full">
-                            🎓 Scholarships
-                        </Button>
+                    <Link href="/scholarships" className="group block">
+                        <div className="quick-action-button bg-gradient-to-br from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white rounded-xl p-4 h-24 flex flex-col items-center justify-center text-center transition-all duration-300 transform group-hover:scale-105 group-hover:shadow-xl">
+                            <div className="text-2xl mb-1">🎓</div>
+                            <div className="text-sm font-medium">Scholarships</div>
+                        </div>
                     </Link>
+                </div>
+                
+                {/* Quick Actions Info */}
+                <div className="mt-6 p-4 bg-blue-50 dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-gray-600">
+                    <p className="text-sm text-blue-700 dark:text-blue-300 text-center">
+                        💡 <strong>Tip:</strong> Use these quick actions to jump directly to your favorite features and boost your productivity!
+                    </p>
                 </div>
             </Card>
         </div>

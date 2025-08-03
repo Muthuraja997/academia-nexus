@@ -1,0 +1,98 @@
+```
+                              ACADEMIA NEXUS - ENTITY RELATIONSHIP DIAGRAM
+                                        
+                                          ┌─────────────────┐
+                                          │      USERS      │
+                                          │─────────────────│
+                                          │ 🔑 id (PK)      │
+                                          │ username        │
+                                          │ email           │
+                                          │ password_hash   │
+                                          │ full_name       │
+                                          │ phone           │
+                                          │ university      │
+                                          │ major           │
+                                          │ graduation_year │
+                                          │ created_at      │
+                                          │ updated_at      │
+                                          │ last_login      │
+                                          │ is_active       │
+                                          └─────────────────┘
+                                                   │
+                       ┌─────────────────────────────┼─────────────────────────────┐
+                       │                             │                             │
+                       │                             │                             │
+              ┌─────────────────┐            ┌─────────────────┐         ┌─────────────────┐
+              │ USER_SESSIONS   │            │STUDENT_ACTIVITIES│         │  TEST_RESULTS   │
+              │─────────────────│            │─────────────────│         │─────────────────│
+              │ 🔑 id (PK)      │            │ 🔑 id (PK)      │         │ 🔑 id (PK)      │
+              │ 🔗 user_id (FK) │     1:N    │ 🔗 user_id (FK) │  1:N    │ 🔗 user_id (FK) │
+              │ session_token   │◄───────────│ activity_type   │◄────────│ test_title      │
+              │ expires_at      │            │ activity_details│         │ company         │
+              │ created_at      │            │ session_duration│         │ role            │
+              └─────────────────┘            │ score           │         │ total_questions │
+                                             │ company         │         │ correct_answers │
+                                             │ job_role        │         │ score_percentage│
+                                             │ skills_used     │         │ answers (JSON)  │
+                                             │ difficulty_level│         │ feedback (JSON) │
+                                             │ completion_status│        │ time_taken      │
+                                             │ created_at      │         │ created_at      │
+                                             └─────────────────┘         └─────────────────┘
+                                                                                  
+                                                   │
+                       ┌─────────────────────────────┼─────────────────────────────┐
+                       │                             │                             │
+                       │                             │                             │
+          ┌─────────────────────┐         ┌─────────────────────┐        ┌─────────────────────┐
+          │COMMUNICATION_SESSIONS│         │  USER_PREFERENCES   │        │  USER_ACHIEVEMENTS  │
+          │─────────────────────│         │─────────────────────│        │─────────────────────│
+          │ 🔑 id (PK)          │         │ 🔑 id (PK)          │        │ 🔑 id (PK)          │
+          │ 🔗 user_id (FK)     │  1:N    │ 🔗 user_id (FK)     │ 1:1    │ 🔗 user_id (FK)     │ 1:N
+          │ session_type        │◄────────│ preferred_companies │◄───────│ achievement_type    │◄────
+          │ duration            │         │ target_roles (JSON) │        │ achievement_name    │
+          │ total_exchanges     │         │ career_interests    │        │ title               │
+          │ topics_covered      │         │ skill_levels (JSON) │        │ description         │
+          │ feedback_score      │         │ learning_goals      │        │ points_earned       │
+          │ transcript (TEXT)   │         │ notification_settings│       │ badge_icon          │
+          │ feedback (JSON)     │         │ privacy_settings    │        │ earned_at           │
+          │ created_at          │         │ dashboard_layout    │        └─────────────────────┘
+          └─────────────────────┘         │ created_at          │
+                                          │ updated_at          │
+                                          └─────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════════════════════
+
+LEGEND:
+🔑 PK = Primary Key
+🔗 FK = Foreign Key
+1:1 = One-to-One Relationship
+1:N = One-to-Many Relationship
+
+RELATIONSHIP DESCRIPTIONS:
+• Users → User_Sessions (1:N): One user can have multiple active sessions
+• Users → Student_Activities (1:N): One user can perform multiple activities
+• Users → Test_Results (1:N): One user can take multiple tests
+• Users → Communication_Sessions (1:N): One user can have multiple practice sessions
+• Users → User_Preferences (1:1): Each user has exactly one preference record
+• Users → User_Achievements (1:N): One user can earn multiple achievements
+
+DATABASE FEATURES:
+• JSON Fields: Flexible storage for complex data structures
+• Cascade Delete: Child records are automatically deleted when parent is removed
+• Indexes: Optimized queries on frequently accessed columns
+• Character Set: UTF8MB4 for international character support
+• Timestamps: Automatic tracking of creation and modification times
+
+ACTIVITY TYPES:
+• 'test' - Practice test sessions
+• 'communication' - Voice communication practice
+• 'question_generation' - Interview question practice
+• 'scholarship_search' - Scholarship discovery activities
+• 'career_analysis' - Career path exploration
+
+ACHIEVEMENT TYPES:
+• 'test_score' - High test performance
+• 'streak' - Consistent daily usage
+• 'improvement' - Score improvement over time
+• 'milestone' - Reaching specific goals
+```
