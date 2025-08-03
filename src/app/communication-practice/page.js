@@ -3,6 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
+import { useActivityLogger } from '@/hooks/useActivityLogger';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import { IconMic } from '../../components/common/Icons';
@@ -10,6 +11,10 @@ import { IconMic } from '../../components/common/Icons';
 export default function CommunicationPracticePage() {
   const { user } = useAuth();
   const { trackActivity, communicationSessions } = useData();
+  const { logCommunication, logActivity } = useActivityLogger();
+  
+  // State for saved feedback results
+  const [savedFeedbacks, setSavedFeedbacks] = useState([]);
   
   // Helper function to safely render feedback items
   const renderFeedbackItem = (item) => {
@@ -39,6 +44,12 @@ export default function CommunicationPracticePage() {
   const [timeLeft, setTimeLeft] = useState(null); // seconds
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speechEnabled, setSpeechEnabled] = useState(true);
+  
+  // Flower animation state
+  const [flowers, setFlowers] = useState([]);
+  const [flowerKey, setFlowerKey] = useState(0);
+  const [isSpeakingActive, setIsSpeakingActive] = useState(false);
+  const speakingTimeoutRef = useRef(null);
 
   // Text-to-speech function
   const speakText = useCallback((text) => {
@@ -70,6 +81,81 @@ export default function CommunicationPracticePage() {
     
     window.speechSynthesis.speak(utterance);
   }, [speechEnabled]);
+
+  // Load saved feedbacks on component mount
+  useEffect(() => {
+    if (user?.id && typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`communicationFeedbacks_${user.id}`);
+      if (saved) {
+        try {
+          setSavedFeedbacks(JSON.parse(saved));
+        } catch (error) {
+          console.error('Error parsing saved feedbacks:', error);
+        }
+      }
+    }
+  }, [user?.id]);
+
+  // Function to save feedback to localStorage
+  const saveFeedback = (feedback) => {
+    if (!user?.id || !feedback) return;
+    
+    const newFeedback = {
+      id: Date.now() + Math.random(),
+      timestamp: new Date().toISOString(),
+      studentName: studentName,
+      feedback: feedback,
+      sessionId: sessionId
+    };
+
+    setSavedFeedbacks(prev => {
+      const updated = [newFeedback, ...prev];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`communicationFeedbacks_${user.id}`, JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    // Log activity
+    logCommunication('feedback_received', feedback.overallScore, feedback.duration);
+  };
+
+  // Function to delete specific feedback
+  const deleteFeedback = (feedbackId) => {
+    if (window.confirm('Are you sure you want to delete this feedback?')) {
+      setSavedFeedbacks(prev => {
+        const updated = prev.filter(item => item.id !== feedbackId);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(`communicationFeedbacks_${user.id}`, JSON.stringify(updated));
+        }
+        
+        // Log deletion activity
+        logActivity('communication_practice', {
+          action: 'delete_feedback',
+          feedbackId: feedbackId,
+          timestamp: new Date().toISOString()
+        });
+        
+        return updated;
+      });
+    }
+  };
+
+  // Function to clear all feedbacks
+  const clearAllFeedbacks = () => {
+    if (window.confirm('Are you sure you want to delete all communication feedbacks? This action cannot be undone.')) {
+      setSavedFeedbacks([]);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(`communicationFeedbacks_${user.id}`);
+      }
+      
+      // Log clear activity
+      logActivity('communication_practice', {
+        action: 'clear_all_feedbacks',
+        timestamp: new Date().toISOString()
+      });
+    }
+  };
 
   const startSession = useCallback(async () => {
     console.log('Click startSession, studentName=', studentName);
@@ -142,6 +228,13 @@ export default function CommunicationPracticePage() {
         setFeedback(data.feedback);
         console.log('Feedback set:', data.feedback);
         
+        // Save feedback to localStorage for persistence
+        saveFeedback({
+          ...data.feedback,
+          duration: Math.round((Date.now() - sessionStartTime) / 1000),
+          overallScore: data.feedback.overallScore || null
+        });
+        
         // Track the communication session completion
         if (user) {
           const sessionDuration = Math.round((Date.now() - sessionStartTime) / 1000);
@@ -191,21 +284,112 @@ export default function CommunicationPracticePage() {
     const r = new SR(); r.continuous = true; r.interimResults = true;
     r.onresult = e => {
       let final = '';
+      let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) final += e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          final += e.results[i][0].transcript;
+        } else {
+          interim += e.results[i][0].transcript;
+        }
       }
+      
+      // Detect active speaking - when there's interim or final results
+      if (interim.trim() || final.trim()) {
+        setIsSpeakingActive(true);
+        
+        // Clear existing timeout and set new one
+        if (speakingTimeoutRef.current) {
+          clearTimeout(speakingTimeoutRef.current);
+        }
+        
+        // Stop speaking detection after 1 second of silence
+        speakingTimeoutRef.current = setTimeout(() => {
+          setIsSpeakingActive(false);
+        }, 1000);
+      }
+      
       if (final) sendMessage(final);
       setCurrentTranscript(final);
     };
     r.onerror = () => setIsRecording(false);
-    r.onend = () => setIsRecording(false);
+    r.onend = () => {
+      setIsRecording(false);
+      setIsSpeakingActive(false);
+      if (speakingTimeoutRef.current) {
+        clearTimeout(speakingTimeoutRef.current);
+      }
+    };
     recognitionRef.current = r;
   }, [sendMessage]);
 
+  // Generate flowers for animation
+  const generateFlowers = () => {
+    const newFlowers = [];
+    for (let i = 0; i < 6; i++) {
+      newFlowers.push({
+        id: `${flowerKey}-${i}`,
+        emoji: ['🌸', '🌺', '🌻', '🌷', '🌹', '💐'][i % 6],
+        delay: Math.random() * 2,
+        duration: 4 + Math.random() * 2, // 4-6 seconds
+        startX: Math.random() * 60 + 15, // Keep flowers between 15% and 75%
+        endX: Math.random() * 60 + 15,
+        size: 24 + Math.random() * 12 // 24-36px size for better constraint
+      });
+    }
+    console.log('Generated flowers:', newFlowers); // Debug log
+    setFlowers(newFlowers);
+    setFlowerKey(prev => prev + 1);
+  };
+
+  // Continuously generate flowers while speaking (trigger on speech, not recording)
+  useEffect(() => {
+    let flowerInterval;
+    
+    console.log('Flower effect - isSpeakingActive:', isSpeakingActive, 'flowers count:', flowers.length); // Debug
+    
+    if (isSpeakingActive) {
+      // Generate initial flowers immediately when speaking starts
+      console.log('Starting flower generation - user is speaking');
+      generateFlowers();
+      
+      // Generate new flowers every 2 seconds while speaking
+      flowerInterval = setInterval(() => {
+        console.log('Generating new flowers during speech');
+        generateFlowers();
+      }, 2000);
+    } else {
+      // Clear flowers when not speaking
+      console.log('Clearing flowers - not speaking');
+      setFlowers([]);
+    }
+    
+    return () => {
+      if (flowerInterval) {
+        clearInterval(flowerInterval);
+      }
+    };
+  }, [isSpeakingActive]); // Changed dependency from isRecording to isSpeakingActive // Removed other dependencies to simplify
+
   const toggleRecording = useCallback(() => {
+    console.log('toggleRecording called, current isRecording:', isRecording); // Debug
+    
     if (!recognitionRef.current) initRecognition();
-    if (isRecording) { recognitionRef.current.stop(); setIsRecording(false); }
-    else { recognitionRef.current.start(); setIsRecording(true); setError(''); }
+    if (isRecording) { 
+      console.log('Stopping recording');
+      recognitionRef.current.stop(); 
+      setIsRecording(false); 
+      setIsSpeakingActive(false);
+      setFlowers([]); // Clear flowers when stopping
+      if (speakingTimeoutRef.current) {
+        clearTimeout(speakingTimeoutRef.current);
+      }
+    }
+    else { 
+      console.log('Starting recording');
+      recognitionRef.current.start(); 
+      setIsRecording(true); 
+      setError(''); 
+    }
   }, [isRecording, initRecognition]);
 
   // Initialize session timer when session starts
@@ -246,7 +430,45 @@ export default function CommunicationPracticePage() {
   }, []);
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-4xl mx-auto p-6 relative overflow-x-hidden">
+      {/* Test flower - always visible for CSS testing */}
+      <div className="fixed top-20 right-4 text-4xl animate-float-flower z-50">
+        🌸
+      </div>
+
+      {/* Simple test flowers that show immediately - fixed positioning */}
+      <div className="fixed bottom-0 left-[10%] text-4xl animate-float-flower z-50" style={{animationDelay: '0s'}}>
+        🌺
+      </div>
+      <div className="fixed bottom-0 left-[30%] text-4xl animate-float-flower z-50" style={{animationDelay: '1s'}}>
+        🌻
+      </div>
+      <div className="fixed bottom-0 left-[50%] text-4xl animate-float-flower z-50" style={{animationDelay: '2s'}}>
+        🌷
+      </div>
+
+      {/* Flower Animation Container - Show flowers when available */}
+      {flowers.length > 0 && (
+        <div className="fixed inset-0 pointer-events-none z-40 overflow-hidden w-screen h-screen">
+          {flowers.map((flower) => (
+            <div
+              key={flower.id}
+              className="absolute animate-float-flower"
+              style={{
+                left: `${Math.min(Math.max(flower.startX, 5), 85)}%`, // Keep between 5% and 85%
+                bottom: '0px', // Start from bottom
+                fontSize: `${Math.min(flower.size, 40)}px`, // Limit max size to 40px
+                animationDelay: `${flower.delay}s`,
+                animationDuration: `${flower.duration}s`,
+                zIndex: 1000
+              }}
+            >
+              {flower.emoji}
+            </div>
+          ))}
+        </div>
+      )}
+      
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold mb-4">🎤 Communication Practice</h1>
         <p className="text-gray-600 dark:text-gray-400 mb-2">
@@ -271,7 +493,18 @@ export default function CommunicationPracticePage() {
             value={studentName}
             onChange={e => setStudentName(e.target.value)}
           />
-          <Button onClick={startSession} disabled={isLoading}>{isLoading ? 'Starting…' : 'Start Session'}</Button>
+          <div className="flex gap-2 mb-4">
+            <Button onClick={startSession} disabled={isLoading}>{isLoading ? 'Starting…' : 'Start Session'}</Button>
+            <button 
+              onClick={() => {
+                console.log('Test button clicked - generating flowers');
+                generateFlowers();
+              }}
+              className="px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600"
+            >
+              Test Flowers 🌸
+            </button>
+          </div>
         </Card>
       ) : (
         <Card className="p-4 mb-6">
@@ -421,6 +654,112 @@ export default function CommunicationPracticePage() {
             <Button onClick={startNewSession} className="bg-blue-500 hover:bg-blue-600">
               🚀 Start New Session
             </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Saved Feedback Results Section */}
+      {savedFeedbacks.length > 0 && (
+        <Card className="p-4 mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-gray-800">📋 Previous Communication Feedback</h2>
+            <Button 
+              onClick={clearAllFeedbacks}
+              className="bg-red-500 hover:bg-red-600 text-white text-sm px-3 py-1"
+            >
+              Clear All
+            </Button>
+          </div>
+          
+          <div className="space-y-4">
+            {savedFeedbacks.map((savedFeedback, index) => (
+              <div key={savedFeedback.id} className="border border-gray-200 rounded-lg p-4 bg-white">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h3 className="font-semibold text-gray-800">Session #{savedFeedbacks.length - index}</h3>
+                    <p className="text-sm text-gray-600">
+                      {savedFeedback.studentName && `Student: ${savedFeedback.studentName} • `}
+                      {new Date(savedFeedback.timestamp).toLocaleDateString()} at {new Date(savedFeedback.timestamp).toLocaleTimeString()}
+                    </p>
+                    {savedFeedback.feedback.overallScore && (
+                      <p className="text-sm font-medium text-blue-600">
+                        Overall Score: {savedFeedback.feedback.overallScore}/10
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => deleteFeedback(savedFeedback.id)}
+                    className="text-red-500 hover:text-red-700 p-1 rounded transition-colors"
+                    title="Delete this feedback"
+                  >
+                    🗑️
+                  </button>
+                </div>
+                
+                <div className="space-y-3">
+                  {/* Overall Performance */}
+                  {savedFeedback.feedback.overallPerformance && (
+                    <div className="bg-blue-50 p-3 rounded">
+                      <h4 className="font-semibold text-blue-800 mb-2">📊 Overall Performance</h4>
+                      <p className="text-sm text-blue-700">{savedFeedback.feedback.overallPerformance}</p>
+                    </div>
+                  )}
+
+                  {/* Strengths */}
+                  {savedFeedback.feedback.strengths && Array.isArray(savedFeedback.feedback.strengths) && (
+                    <div className="bg-green-50 p-3 rounded">
+                      <h4 className="font-semibold text-green-800 mb-2">💪 Strengths</h4>
+                      <ul className="text-sm text-green-700 space-y-1">
+                        {savedFeedback.feedback.strengths.map((strength, idx) => (
+                          <li key={idx} className="flex items-start">
+                            <span className="mr-2">•</span>
+                            <span>{renderFeedbackItem(strength)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Areas for Improvement */}
+                  {savedFeedback.feedback.areasForImprovement && Array.isArray(savedFeedback.feedback.areasForImprovement) && (
+                    <div className="bg-yellow-50 p-3 rounded">
+                      <h4 className="font-semibold text-yellow-800 mb-2">🎯 Areas for Improvement</h4>
+                      <ul className="text-sm text-yellow-700 space-y-1">
+                        {savedFeedback.feedback.areasForImprovement.map((area, idx) => (
+                          <li key={idx} className="flex items-start">
+                            <span className="mr-2">•</span>
+                            <span>{renderFeedbackItem(area)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Suggestions */}
+                  {savedFeedback.feedback.suggestions && Array.isArray(savedFeedback.feedback.suggestions) && (
+                    <div className="bg-purple-50 p-3 rounded">
+                      <h4 className="font-semibold text-purple-800 mb-2">💡 Suggestions</h4>
+                      <ul className="text-sm text-purple-700 space-y-1">
+                        {savedFeedback.feedback.suggestions.map((suggestion, idx) => (
+                          <li key={idx} className="flex items-start">
+                            <span className="mr-2">•</span>
+                            <span>{renderFeedbackItem(suggestion)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Encouragement */}
+                  {savedFeedback.feedback.encouragement && (
+                    <div className="bg-pink-50 p-3 rounded">
+                      <h4 className="font-semibold text-pink-800 mb-2">🌟 Encouragement</h4>
+                      <p className="text-sm text-pink-700">{savedFeedback.feedback.encouragement}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </Card>
       )}

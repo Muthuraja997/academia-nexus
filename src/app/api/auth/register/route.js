@@ -52,21 +52,35 @@ export async function POST(request) {
 
         const db = getDatabase();
 
-        // Check if user already exists
-        const existingUserByEmail = await db.getUserByEmail(email);
-        if (existingUserByEmail) {
-            return Response.json({
-                success: false,
-                error: 'User with this email already exists'
-            }, { status: 409 });
+        // Check if user already exists (including inactive users)
+        const existingUserByEmail = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+        if (existingUserByEmail.length > 0) {
+            const user = existingUserByEmail[0];
+            if (user.is_active) {
+                return Response.json({
+                    success: false,
+                    error: 'User with this email already exists'
+                }, { status: 409 });
+            } else {
+                // User exists but is inactive, we can reactivate or delete and recreate
+                await db.hardDeleteUserByEmail(email);
+                console.log(`Deleted inactive user with email: ${email}`);
+            }
         }
 
-        const existingUserByUsername = await db.getUserByUsername(username);
-        if (existingUserByUsername) {
-            return Response.json({
-                success: false,
-                error: 'Username is already taken'
-            }, { status: 409 });
+        const existingUserByUsername = await db.query('SELECT * FROM users WHERE username = ?', [username]);
+        if (existingUserByUsername.length > 0) {
+            const user = existingUserByUsername[0];
+            if (user.is_active) {
+                return Response.json({
+                    success: false,
+                    error: 'Username is already taken'
+                }, { status: 409 });
+            } else {
+                // Username exists but is inactive, delete it
+                await db.hardDeleteUser(user.id);
+                console.log(`Deleted inactive user with username: ${username}`);
+            }
         }
 
         // Hash password

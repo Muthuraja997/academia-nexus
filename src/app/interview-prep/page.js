@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
+import { useActivityLogger } from '@/hooks/useActivityLogger';
 import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
 
@@ -9,6 +10,7 @@ import Button from '@/components/common/Button';
 const InterviewPrepPage = () => {
     const { user } = useAuth();
     const { testResults: contextTestResults } = useData();
+    const { logInterview, logActivity } = useActivityLogger();
     // Helper function to safely render feedback items
     const renderFeedbackItem = (item) => {
         if (typeof item === 'string') {
@@ -120,6 +122,14 @@ const InterviewPrepPage = () => {
         setIsLoading(true);
         setQuestions(null);
         
+        // Log activity
+        logActivity('interview_prep', {
+            action: 'generate_questions',
+            company: company,
+            role: role,
+            timestamp: new Date().toISOString()
+        });
+        
         // Save company and role to localStorage for test agent
         if (typeof window !== 'undefined') {
             localStorage.setItem('interviewCompany', company);
@@ -134,6 +144,15 @@ const InterviewPrepPage = () => {
                 { category: 'Technical', q: `Describe a project where you used skills relevant to the ${role} position.` },
             ]);
             setIsLoading(false);
+            
+            // Log successful generation
+            logActivity('interview_prep', {
+                action: 'questions_generated',
+                company: company,
+                role: role,
+                questionCount: 3,
+                timestamp: new Date().toISOString()
+            });
         }, 2000);
     };
 
@@ -170,6 +189,15 @@ const InterviewPrepPage = () => {
                 if (user?.id && typeof window !== 'undefined') {
                     localStorage.setItem(`interviewPreviousQuestions_${user.id}`, JSON.stringify(updated));
                 }
+                
+                // Log deletion activity
+                logActivity('interview_prep', {
+                    action: 'delete_previous_year_questions',
+                    deletedIndex: index,
+                    remainingCount: updated.length,
+                    timestamp: new Date().toISOString()
+                });
+                
                 return updated;
             });
         }
@@ -194,6 +222,15 @@ const InterviewPrepPage = () => {
                 if (user?.id && typeof window !== 'undefined') {
                     localStorage.setItem(`interviewProgrammingQuestions_${user.id}`, JSON.stringify(updated));
                 }
+                
+                // Log deletion activity
+                logActivity('interview_prep', {
+                    action: 'delete_programming_questions',
+                    deletedIndex: index,
+                    remainingCount: updated.length,
+                    timestamp: new Date().toISOString()
+                });
+                
                 return updated;
             });
         }

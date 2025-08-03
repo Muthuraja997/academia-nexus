@@ -11,6 +11,19 @@
 			"group": "none",
 			"isBackground": true,
 			"problemMatcher": []
+		},
+		{
+			"label": "Run Study MCP Server",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"study_mcp_http_server.py",
+				"--port",
+				"8081"
+			],
+			"group": "none",
+			"isBackground": true,
+			"problemMatcher": []
 		}
 	]
 }

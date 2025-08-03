@@ -22,11 +22,16 @@ const DashboardPage = () => {
     } = useData();
 
     const [pageStartTime] = useState(Date.now());
+    const [studyHistory, setStudyHistory] = useState([]);
+    const [studyReflection, setStudyReflection] = useState(null);
 
     useEffect(() => {
         if (user) {
             // Track page visit
             trackPageVisit('dashboard', 0);
+            
+            // Load study history for reflection
+            loadStudyData();
             
             // Track page duration on unmount
             return () => {
@@ -35,6 +40,108 @@ const DashboardPage = () => {
             };
         }
     }, [user, pageStartTime]); // Removed trackPageVisit from dependencies
+
+    const loadStudyData = () => {
+        if (!user?.id || typeof window === 'undefined') return;
+        
+        try {
+            const saved = localStorage.getItem(`studyHistory_${user.id}`);
+            if (saved) {
+                const history = JSON.parse(saved);
+                setStudyHistory(history);
+                generateStudyReflection(history);
+            }
+        } catch (error) {
+            console.error('Error loading study data:', error);
+        }
+    };
+
+    const generateStudyReflection = (history) => {
+        if (!history || history.length === 0) return;
+
+        // Study patterns analysis
+        const studyTopics = {};
+        const careerInterests = new Set();
+        let totalStudyTime = 0;
+        const recentStudies = history.filter(study => {
+            const studyDate = new Date(study.timestamp);
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            return studyDate >= weekAgo;
+        });
+
+        history.forEach(study => {
+            studyTopics[study.topic] = (studyTopics[study.topic] || 0) + 1;
+            totalStudyTime += study.duration || 0;
+            
+            if (study.response?.careerPaths) {
+                study.response.careerPaths.forEach(career => careerInterests.add(career));
+            }
+        });
+
+        const topTopics = Object.entries(studyTopics)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 3)
+            .map(([topic, count]) => ({ topic, count }));
+
+        const avgStudyTime = Math.round(totalStudyTime / history.length);
+        
+        setStudyReflection({
+            totalSessions: history.length,
+            recentSessions: recentStudies.length,
+            topTopics,
+            careerInterests: Array.from(careerInterests).slice(0, 5),
+            avgStudyTime,
+            weeklyTrend: recentStudies.length > 0 ? 'increasing' : 'stable',
+            studyStreak: calculateStudyStreak(history),
+            learningFocus: identifyLearningFocus(topTopics)
+        });
+    };
+
+    const calculateStudyStreak = (history) => {
+        if (history.length === 0) return 0;
+        
+        const today = new Date();
+        let streak = 0;
+        let currentDate = new Date(today);
+        
+        for (let i = 0; i < 30; i++) { // Check last 30 days
+            const dateStr = currentDate.toISOString().split('T')[0];
+            const hasStudy = history.some(study => 
+                study.timestamp.startsWith(dateStr)
+            );
+            
+            if (hasStudy) {
+                streak++;
+            } else if (streak > 0) {
+                break; // Streak broken
+            }
+            
+            currentDate.setDate(currentDate.getDate() - 1);
+        }
+        
+        return streak;
+    };
+
+    const identifyLearningFocus = (topTopics) => {
+        if (topTopics.length === 0) return 'Explore New Topics';
+        
+        const primaryTopic = topTopics[0].topic.toLowerCase();
+        
+        if (primaryTopic.includes('machine learning') || primaryTopic.includes('ai')) {
+            return 'AI & Machine Learning';
+        } else if (primaryTopic.includes('data')) {
+            return 'Data Science';
+        } else if (primaryTopic.includes('physics') || primaryTopic.includes('quantum')) {
+            return 'Physics & Sciences';
+        } else if (primaryTopic.includes('calculus') || primaryTopic.includes('math')) {
+            return 'Mathematics';
+        } else if (primaryTopic.includes('biology') || primaryTopic.includes('genetics')) {
+            return 'Life Sciences';
+        } else {
+            return 'Interdisciplinary Learning';
+        }
+    };
 
     const generateChartData = () => {
         // Activity trend over last 7 days
@@ -74,6 +181,7 @@ const DashboardPage = () => {
 
         // Skills practice frequency
         const skillsData = [
+            { label: 'Study Sessions', value: studyHistory.length },
             { label: 'Communication', value: communicationSessions.length },
             { label: 'Technical', value: testResults.filter(t => t.test_title?.toLowerCase().includes('technical')).length },
             { label: 'Interview', value: testResults.filter(t => t.test_title?.toLowerCase().includes('interview')).length },
@@ -235,6 +343,131 @@ const DashboardPage = () => {
                 )}
             </div>
 
+            {/* Study Reflection Section */}
+            {studyReflection && (
+                <Card className="p-6 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900 dark:to-pink-900">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                        📚 Study Activity Reflection
+                    </h2>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div className="text-center">
+                            <div className="text-3xl font-bold text-purple-600 mb-1">
+                                {studyReflection.totalSessions}
+                            </div>
+                            <div className="text-sm text-gray-600">Total Study Sessions</div>
+                            {studyReflection.recentSessions > 0 && (
+                                <div className="text-xs text-green-600 mt-1">
+                                    +{studyReflection.recentSessions} this week
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div className="text-center">
+                            <div className="text-3xl font-bold text-blue-600 mb-1">
+                                {studyReflection.studyStreak}
+                            </div>
+                            <div className="text-sm text-gray-600">Day Study Streak 🔥</div>
+                            <div className="text-xs text-gray-500 mt-1">
+                                Keep it up!
+                            </div>
+                        </div>
+                        
+                        <div className="text-center">
+                            <div className="text-3xl font-bold text-orange-600 mb-1">
+                                {studyReflection.avgStudyTime}
+                            </div>
+                            <div className="text-sm text-gray-600">Avg Minutes/Session</div>
+                            <div className="text-xs text-gray-500 mt-1">
+                                Learning Focus: {studyReflection.learningFocus}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                Most Studied Topics
+                            </h3>
+                            <div className="space-y-2">
+                                {studyReflection.topTopics.map((item, index) => (
+                                    <div key={index} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg">
+                                        <div>
+                                            <p className="font-medium text-sm capitalize">{item.topic}</p>
+                                            <p className="text-xs text-gray-500">
+                                                {item.count} session{item.count !== 1 ? 's' : ''}
+                                            </p>
+                                        </div>
+                                        <div className="w-12 h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
+                                            <div 
+                                                className="h-full bg-purple-500 rounded-full" 
+                                                style={{ width: `${(item.count / studyReflection.totalSessions) * 100}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                Career Interests Discovered
+                            </h3>
+                            <div className="space-y-2">
+                                {studyReflection.careerInterests.map((career, index) => (
+                                    <div key={index} className="p-2 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded text-sm font-medium">
+                                        {career}
+                                    </div>
+                                ))}
+                            </div>
+                            {studyReflection.careerInterests.length === 0 && (
+                                <p className="text-gray-500 text-sm">
+                                    Study more topics to discover career paths!
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="mt-6 p-4 bg-white dark:bg-gray-800 rounded-lg">
+                        <h3 className="font-medium text-sm mb-2">📈 Study Insights & Recommendations</h3>
+                        <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                            {studyReflection.studyStreak >= 7 && (
+                                <p>🎉 Excellent consistency! You've maintained a {studyReflection.studyStreak}-day study streak.</p>
+                            )}
+                            {studyReflection.recentSessions >= 5 && (
+                                <p>⚡ You're on fire! {studyReflection.recentSessions} study sessions this week.</p>
+                            )}
+                            {studyReflection.avgStudyTime >= 20 && (
+                                <p>🎯 Great depth! Your {studyReflection.avgStudyTime}-minute average shows quality learning.</p>
+                            )}
+                            {studyReflection.careerInterests.length >= 3 && (
+                                <p>🌟 Diverse interests! You've explored {studyReflection.careerInterests.length} different career paths.</p>
+                            )}
+                            {studyReflection.totalSessions >= 10 && (
+                                <p>📚 Knowledge seeker! You've completed {studyReflection.totalSessions} study sessions total.</p>
+                            )}
+                            
+                            {/* Personalized recommendations */}
+                            {studyReflection.studyStreak < 3 && (
+                                <p>💡 Try to study a little each day to build momentum and improve retention.</p>
+                            )}
+                            {studyReflection.avgStudyTime < 10 && (
+                                <p>📖 Consider spending more time per session for deeper understanding.</p>
+                            )}
+                            {studyReflection.topTopics.length === 1 && (
+                                <p>🔍 Explore diverse topics to discover new interests and career possibilities!</p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="mt-4 flex justify-end">
+                        <Link href="/study">
+                            <Button size="sm">Continue Learning →</Button>
+                        </Link>
+                    </div>
+                </Card>
+            )}
+
             {/* Career Insights */}
             {careerInsights && (
                 <Card className="p-6">
@@ -367,30 +600,35 @@ const DashboardPage = () => {
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
                     🚀 Quick Actions
                 </h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    <Link href="/communication-practice">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <Link href="/study">
                         <Button className="w-full">
-                            Practice Communication
+                            📚 Study Assistant
+                        </Button>
+                    </Link>
+                    <Link href="/communication-practice">
+                        <Button variant="secondary" className="w-full">
+                            💬 Communication
                         </Button>
                     </Link>
                     <Link href="/tests">
                         <Button variant="secondary" className="w-full">
-                            Take a Test
+                            📝 Take Test
                         </Button>
                     </Link>
                     <Link href="/interview-prep">
-                        <Button variant="secondary" className="w-full">
-                            Interview Prep
+                        <Button variant="outline" className="w-full">
+                            🎤 Interview Prep
                         </Button>
                     </Link>
                     <Link href="/career-path">
                         <Button variant="outline" className="w-full">
-                            Career Analysis
+                            🎯 Career Analysis
                         </Button>
                     </Link>
                     <Link href="/scholarships">
                         <Button variant="outline" className="w-full">
-                            Find Scholarships
+                            🎓 Scholarships
                         </Button>
                     </Link>
                 </div>

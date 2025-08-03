@@ -1,43 +1,50 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+// Load environment variables
+require('dotenv').config({ path: '.env.local' });
+
+const mysql = require('mysql2/promise');
+const { pool } = require('./mysql-config');
 
 class Database {
     constructor() {
-        const dbPath = path.join(process.cwd(), 'database.sqlite');
-        this.db = new sqlite3.Database(dbPath, (err) => {
-            if (err) {
-                console.error('Error connecting to database:', err.message);
-            }
-        });
+        this.pool = pool;
+        this.testConnection();
+    }
+
+    // Test database connection
+    async testConnection() {
+        try {
+            const connection = await this.pool.getConnection();
+            console.log('✅ Connected to MySQL database successfully');
+            connection.release();
+        } catch (error) {
+            console.error('❌ Error connecting to MySQL database:', error.message);
+        }
     }
 
     // Generic query method
-    query(sql, params = []) {
-        return new Promise((resolve, reject) => {
-            this.db.all(sql, params, (err, rows) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(rows);
-                }
-            });
-        });
+    async query(sql, params = []) {
+        try {
+            const [rows] = await this.pool.execute(sql, params);
+            return rows;
+        } catch (error) {
+            console.error('Database query error:', error);
+            throw error;
+        }
     }
 
     // Generic run method for INSERT, UPDATE, DELETE
-    run(sql, params = []) {
-        return new Promise((resolve, reject) => {
-            this.db.run(sql, params, function(err) {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve({
-                        id: this.lastID,
-                        changes: this.changes
-                    });
-                }
-            });
-        });
+    async run(sql, params = []) {
+        try {
+            const [result] = await this.pool.execute(sql, params);
+            return {
+                id: result.insertId,
+                changes: result.affectedRows,
+                result: result
+            };
+        } catch (error) {
+            console.error('Database run error:', error);
+            throw error;
+        }
     }
 
     // User management methods
@@ -84,14 +91,16 @@ class Database {
     }
 
     async updateLastLogin(userId) {
-        const sql = 'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?';
+        const sql = 'UPDATE users SET last_login = NOW() WHERE id = ?';
         return await this.run(sql, [userId]);
     }
 
     // Session management
     async createSession(userId, sessionToken, expiresAt) {
+        // Convert ISO string to MySQL datetime format
+        const mysqlDateTime = new Date(expiresAt).toISOString().slice(0, 19).replace('T', ' ');
         const sql = 'INSERT INTO user_sessions (user_id, session_token, expires_at) VALUES (?, ?, ?)';
-        return await this.run(sql, [userId, sessionToken, expiresAt]);
+        return await this.run(sql, [userId, sessionToken, mysqlDateTime]);
     }
 
     async getValidSession(sessionToken) {
@@ -99,7 +108,7 @@ class Database {
             SELECT us.*, u.id as user_id, u.username, u.email, u.full_name 
             FROM user_sessions us 
             JOIN users u ON us.user_id = u.id 
-            WHERE us.session_token = ? AND us.expires_at > CURRENT_TIMESTAMP AND u.is_active = 1
+            WHERE us.session_token = ? AND us.expires_at > NOW() AND u.is_active = 1
         `;
         const sessions = await this.query(sql, [sessionToken]);
         return sessions[0] || null;
@@ -132,13 +141,15 @@ class Database {
         const sql = `
             SELECT * FROM student_activities 
             WHERE user_id = ? 
-            ORDER BY timestamp DESC 
+            ORDER BY created_at DESC 
             LIMIT ?
         `;
         const activities = await this.query(sql, [userId, limit]);
         return activities.map(activity => ({
             ...activity,
-            activity_details: JSON.parse(activity.activity_details || '{}')
+            activity_details: typeof activity.activity_details === 'string' 
+                ? JSON.parse(activity.activity_details || '{}')
+                : activity.activity_details || {}
         }));
     }
 
@@ -317,60 +328,75 @@ class Database {
 
     async createUserPreferences(userId, preferences) {
         const {
+            communication_practice_enabled = true,
+            interview_prep_enabled = true,
+            scholarship_alerts = true,
+            career_recommendations = true,
+            difficulty_level = 'intermediate',
+            preferred_subjects = '[]',
+            notification_settings = '{}'
+        } = preferences;
+
+        // Map to the actual table schema (user_preferences table)
+        const careerInterests = [
+            ...(career_recommendations ? ['career_guidance'] : []),
+            ...(interview_prep_enabled ? ['interview_preparation'] : []),
+            ...(communication_practice_enabled ? ['communication_skills'] : [])
+        ];
+
+        const skillLevels = {
+            overall_level: difficulty_level,
+            technical_skills: 'beginner',
+            communication_skills: 'beginner',
+            interview_skills: 'beginner'
+        };
+
+        const learningGoals = [
+            ...(interview_prep_enabled ? ['improve_interview_skills'] : []),
+            ...(communication_practice_enabled ? ['enhance_communication'] : []),
+            ...(scholarship_alerts ? ['find_scholarships'] : [])
+        ];
+
+        const notificationSettings = {
+            email_notifications: true,
+            push_notifications: true,
+            weekly_summary: true,
             communication_practice_enabled,
             interview_prep_enabled,
             scholarship_alerts,
             career_recommendations,
-            difficulty_level,
-            preferred_subjects,
-            notification_settings
-        } = preferences;
+            ...(typeof notification_settings === 'string' ? JSON.parse(notification_settings) : notification_settings)
+        };
 
-        // Map to the actual table schema
-        const userData = {
-            preferred_companies: [],
-            target_roles: [],
-            skill_level: difficulty_level || 'intermediate',
-            notification_preferences: {
-                email_notifications: true,
-                push_notifications: true,
-                weekly_summary: true,
-                communication_practice_enabled: communication_practice_enabled,
-                interview_prep_enabled: interview_prep_enabled,
-                scholarship_alerts: scholarship_alerts,
-                career_recommendations: career_recommendations,
-                ...(notification_settings ? JSON.parse(notification_settings) : {})
-            },
-            dashboard_layout: {
-                showRecentActivity: true,
-                showAchievements: true,
-                showProgress: true
-            }
+        const privacySettings = {
+            profile_visibility: 'public',
+            activity_sharing: true,
+            achievement_sharing: true
         };
 
         const sql = `
             INSERT INTO user_preferences 
-            (user_id, preferred_companies, target_roles, skill_level, notification_preferences, dashboard_layout)
+            (user_id, career_interests, skill_levels, learning_goals, notification_settings, privacy_settings)
             VALUES (?, ?, ?, ?, ?, ?)
         `;
         
         return await this.run(sql, [
             userId,
-            JSON.stringify(userData.preferred_companies),
-            JSON.stringify(userData.target_roles),
-            userData.skill_level,
-            JSON.stringify(userData.notification_preferences),
-            JSON.stringify(userData.dashboard_layout)
+            JSON.stringify(careerInterests),
+            JSON.stringify(skillLevels),
+            JSON.stringify(learningGoals),
+            JSON.stringify(notificationSettings),
+            JSON.stringify(privacySettings)
         ]);
     }
 
     async createAchievement(userId, achievementName, achievementType, description) {
         const sql = `
-            INSERT INTO user_achievements 
-            (user_id, achievement_name, achievement_type, achievement_description, points_earned)
+            INSERT INTO achievements 
+            (user_id, achievement_type, title, description, points)
             VALUES (?, ?, ?, ?, ?)
         `;
-        return await this.run(sql, [userId, achievementName, achievementType, description, 100]);
+        return await this.run(sql, [userId, achievementType, achievementName, description, 100]);
     }
 
     // Enhanced activity logging with career insights
@@ -469,6 +495,34 @@ class Database {
             });
         });
     }
+
+    // User Management Methods
+    async softDeleteUser(userId) {
+        const sql = 'UPDATE users SET is_active = 0, updated_at = NOW() WHERE id = ?';
+        return await this.run(sql, [userId]);
+    }
+
+    async hardDeleteUser(userId) {
+        const sql = 'DELETE FROM users WHERE id = ?';
+        return await this.run(sql, [userId]);
+    }
+
+    async hardDeleteUserByEmail(email) {
+        const sql = 'DELETE FROM users WHERE email = ?';
+        return await this.run(sql, [email]);
+    }
+
+    async reactivateUser(userId) {
+        const sql = 'UPDATE users SET is_active = 1, updated_at = NOW() WHERE id = ?';
+        return await this.run(sql, [userId]);
+    }
+
+    async getAllUsers(includeInactive = false) {
+        const sql = includeInactive 
+            ? 'SELECT * FROM users ORDER BY created_at DESC' 
+            : 'SELECT * FROM users WHERE is_active = 1 ORDER BY created_at DESC';
+        return await this.query(sql);
+    }
 }
 
 // Export singleton instance
@@ -481,4 +535,4 @@ const getDatabase = () => {
     return dbInstance;
 };
 
-export { Database, getDatabase };
+module.exports = { Database, getDatabase };

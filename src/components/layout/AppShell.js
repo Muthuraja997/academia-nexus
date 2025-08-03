@@ -5,6 +5,7 @@ import ChatWidget from './ChatWidget';
 import { IconMenu } from '../common/Icons';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useActivityLogger } from '@/hooks/useActivityLogger';
 import Link from 'next/link';
 
 // A mapping of routes to their display titles for the header.
@@ -26,6 +27,9 @@ const AppShell = ({ children }) => {
     const pathname = usePathname();
     const title = pageTitles[pathname] || 'Academia Nexus';
     const { user, isAuthenticated, logout, loading } = useAuth();
+    
+    // Initialize activity logger for automatic page tracking
+    useActivityLogger();
 
     // Show loading screen while checking authentication
     if (loading) {

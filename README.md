@@ -83,8 +83,8 @@ Built on the **Model Context Protocol (MCP)** architecture, Academia Nexus struc
 ### **Backend Stack**
 | Technology | Purpose | Features |
 |------------|---------|----------|
-| **Python Flask** | API server | RESTful endpoints |
-| **SQLite** | Database | User data, activities, test results |
+| **Python Flask** | AI API server | RESTful endpoints |
+| **MySQL** | Database | User data, activities, test results |
 | **JWT** | Authentication | Token-based security |
 | **Google Gemini API** | AI intelligence | Advanced language model |
 
@@ -101,6 +101,7 @@ Built on the **Model Context Protocol (MCP)** architecture, Academia Nexus struc
 ### **Prerequisites**
 - Node.js (v18 or later)
 - Python (v3.9 or later)
+- MySQL Server (v8.0 or later)
 - Google Gemini API Key
 
 ### **Installation Steps**
@@ -147,10 +148,13 @@ python intelligent_agent.py
 ```
 *Backend will run on `http://localhost:8080`*
 
-#### 4. **Database Initialization**
+#### 4. **Database Setup**
 ```bash
-# Initialize SQLite database
-node database/init.js
+# Configure MySQL credentials in .env.local
+# See database/MYSQL_SETUP.md for detailed instructions
+
+# Initialize MySQL database
+npm run db:init
 ```
 
 ---
