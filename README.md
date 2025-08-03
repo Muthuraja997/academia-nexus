@@ -50,10 +50,16 @@ Built on the **Model Context Protocol (MCP)** architecture, Academia Nexus struc
 - Practice link integration with coding platforms
 
 ### 🎙️ **Communication Practice Agent**
-- Voice-based interview simulation with AI feedback
-- Real-time conversation analysis and improvement suggestions
-- Communication skill assessment and progress tracking
-- Multiple practice scenarios and difficulty levels
+- **Voice-based interview simulation** with AI feedback using Web Speech API
+- **Real-time conversation analysis** and improvement suggestions
+- **Speech-triggered flower animations** for enhanced user engagement
+- **Text-to-speech AI responses** with voice selection
+- **Session-based practice** with timed conversations (5-minute sessions)
+- **Comprehensive feedback system** with detailed scoring
+- **Persistent feedback storage** - all practice sessions saved locally
+- **Individual session management** with delete functionality
+- **Responsive design** with overflow-safe animations
+- **Accessibility features** including keyboard navigation and screen reader support
 
 ### 🎓 **Scholarship Discovery Engine**
 - **AI-powered scholarship matching** using Google Gemini
@@ -77,8 +83,10 @@ Built on the **Model Context Protocol (MCP)** architecture, Academia Nexus struc
 |------------|---------|---------|
 | **Next.js** | React framework with App Router | 14.2.30 |
 | **React** | UI library with Context API | Latest |
-| **Tailwind CSS** | Utility-first styling | Latest |
+| **Tailwind CSS** | Utility-first styling with PostCSS | Latest |
 | **Chart.js** | Data visualization | Custom components |
+| **Web Speech API** | Voice recognition and synthesis | Native browser API |
+| **CSS Animations** | Keyframe animations for interactive elements | CSS3 |
 
 ### **Backend Stack**
 | Technology | Purpose | Features |
@@ -87,6 +95,8 @@ Built on the **Model Context Protocol (MCP)** architecture, Academia Nexus struc
 | **MySQL** | Database | User data, activities, test results |
 | **JWT** | Authentication | Token-based security |
 | **Google Gemini API** | AI intelligence | Advanced language model |
+| **MCP Servers** | Modular AI services | Scholarship and study servers |
+| **Speech Processing** | Voice interaction | Real-time speech recognition |
 
 ### **Data Flow Architecture**
 - **Context Providers**: AuthContext, DataContext for state management
@@ -143,10 +153,15 @@ pip install Flask Flask-Cors google-generativeai requests beautifulsoup4 sqlite3
 # Configure API key in intelligent_agent.py
 export GEMINI_API_KEY="your-api-key-here"
 
-# Start Flask server
+# Start main Flask server
 python intelligent_agent.py
+
+# In separate terminals, start MCP servers:
+python scholarship_mcp_server.py
+python study_mcp_http_server.py --port 8081
 ```
 *Backend will run on `http://localhost:8080`*
+*MCP servers will run on ports 8080 and 8081*
 
 #### 4. **Database Setup**
 ```bash
@@ -170,6 +185,7 @@ academia-nexus/
 │   │   ├── dashboard/                # Main dashboard
 │   │   ├── interview-prep/           # Interview preparation
 │   │   ├── career-path/              # Career guidance
+│   │   ├── communication-practice/   # Voice-based communication practice
 │   │   ├── scholarships/             # Scholarship finder
 │   │   └── tests/                    # Test agent
 │   ├── components/                   # Reusable React components
@@ -182,8 +198,34 @@ academia-nexus/
 ├── database/                         # Database configuration
 ├── intelligent_agent.py             # Python Flask backend
 ├── scholarship_mcp_server.py        # MCP scholarship server
+├── study_mcp_http_server.py         # Study assistance MCP server
+├── unified_study_server.py          # Unified study server
 └── public/                           # Static assets
 ```
+
+---
+
+## 🆕 Recent Updates & Features
+
+### **Communication Practice Enhancements** (Latest)
+- ✨ **Speech-triggered flower animations** - Beautiful floating flowers appear when users speak
+- 🔧 **Overflow fixes** - All animations now stay within viewport boundaries
+- 🎯 **Improved positioning** - Flowers use percentage-based responsive positioning
+- 🎨 **Enhanced CSS animations** - Optimized keyframes with proper constraints
+- 🔊 **Voice synthesis improvements** - Better AI voice selection and controls
+- 📱 **Mobile responsiveness** - Touch-friendly interface with gesture support
+
+### **Technical Improvements**
+- 🛡️ **CSS validation** - Fixed Tailwind CSS unknown at-rule warnings
+- 🚀 **Performance optimization** - Reduced animation computation overhead
+- 🎮 **Interactive elements** - Debug panel removal for cleaner UI
+- 🔒 **Security enhancements** - Proper CORS and API endpoint protection
+
+### **Developer Experience**
+- 📝 **Comprehensive logging** - Enhanced debugging capabilities
+- 🧪 **Testing utilities** - Manual flower generation for testing
+- 🔧 **VS Code integration** - Custom settings for Tailwind CSS support
+- 📚 **Documentation updates** - Complete feature documentation
 
 ---
 
@@ -206,6 +248,10 @@ academia-nexus/
 - ✅ Real-time data visualization with interactive charts
 - ✅ Progressive loading states and error handling
 - ✅ Keyboard shortcuts and accessibility features
+- ✅ **Speech-triggered visual animations** with flower effects
+- ✅ **Overflow-safe CSS animations** that stay within viewport
+- ✅ **Voice interaction capabilities** with speech recognition
+- ✅ **Cross-browser compatibility** with fallback support
 
 ---
 
@@ -245,6 +291,9 @@ DATABASE_URL=your-database-url
 - `POST /getPreviousYearQuestions` - Interview questions
 - `POST /getProgrammingQuestions` - Coding challenges
 - `POST /getScholarships` - Scholarship opportunities
+- `POST /startCommunicationSession` - Start voice practice session
+- `POST /sendMessage` - Send message in communication session
+- `POST /endCommunicationSession` - End session and get feedback
 
 ---
 
@@ -269,10 +318,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Google Gemini API** for AI capabilities
 - **Next.js team** for the excellent framework
 - **Vercel** for deployment platform
+- **Web Speech API** for voice interaction capabilities
+- **Tailwind CSS** for utility-first styling
 - **Open source community** for inspiration and tools
+- **CSS3 Animation** specifications for smooth visual effects
 
 ---
 
 **Built with ❤️ by [Muthuraja997](https://github.com/Muthuraja997)**
 
-*Empowering students with AI-driven success tools*
+*Empowering students with AI-driven success tools and immersive learning experiences*
