@@ -49,7 +49,7 @@ const ScholarshipPage = () => {
         achievements: ''
     });
 
-    // Load saved scholarship searches on component mount
+    // Load saved scholarship searches on component mount and populate profile from user data
     useEffect(() => {
         if (user?.id && typeof window !== 'undefined') {
             const saved = localStorage.getItem(`scholarshipSearches_${user.id}`);
@@ -61,7 +61,20 @@ const ScholarshipPage = () => {
                 }
             }
         }
-    }, [user?.id]);
+
+        // Auto-populate student profile from user data
+        if (user) {
+            setStudentProfile({
+                name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || '',
+                educationLevel: user.education_level || '',
+                gpa: user.gpa || '',
+                majorField: user.major || '',
+                nationality: user.nationality || '',
+                interests: user.interests || '',
+                achievements: user.achievements || ''
+            });
+        }
+    }, [user]);
 
     // Function to save scholarship search results
     const saveScholarshipSearch = (scholarships, profile) => {
@@ -137,8 +150,7 @@ const ScholarshipPage = () => {
         });
     };
 
-    const handleSearch = async (e) => {
-        e.preventDefault();
+    const handleSearch = async () => {
         setIsLoading(true);
         setError(null);
         try {
@@ -161,14 +173,6 @@ const ScholarshipPage = () => {
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const handleProfileChange = (e) => {
-        const { name, value } = e.target;
-        setStudentProfile(prev => ({
-            ...prev,
-            [name]: value
-        }));
     };
 
     // A reusable component to display each scholarship card.
@@ -385,97 +389,74 @@ const ScholarshipPage = () => {
             )}
 
             <Card className="mb-8">
-                <h2 className="text-xl font-bold mb-4">Student Profile</h2>
-                <form onSubmit={handleSearch} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Name</label>
-                            <input
-                                type="text"
-                                name="name"
-                                value={studentProfile.name}
-                                onChange={handleProfileChange}
-                                className="w-full p-2 border rounded-lg"
-                                placeholder="Your full name"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Education Level</label>
-                            <select
-                                name="educationLevel"
-                                value={studentProfile.educationLevel}
-                                onChange={handleProfileChange}
-                                className="w-full p-2 border rounded-lg"
-                            >
-                                <option value="">Select Level</option>
-                                <option value="High School">High School</option>
-                                <option value="Undergraduate">Undergraduate</option>
-                                <option value="Graduate">Graduate</option>
-                                <option value="PhD">PhD</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1">GPA</label>
-                            <input
-                                type="text"
-                                name="gpa"
-                                value={studentProfile.gpa}
-                                onChange={handleProfileChange}
-                                className="w-full p-2 border rounded-lg"
-                                placeholder="e.g., 3.5"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Major/Field of Study</label>
-                            <input
-                                type="text"
-                                name="majorField"
-                                value={studentProfile.majorField}
-                                onChange={handleProfileChange}
-                                className="w-full p-2 border rounded-lg"
-                                placeholder="e.g., Computer Science"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Nationality</label>
-                            <input
-                                type="text"
-                                name="nationality"
-                                value={studentProfile.nationality}
-                                onChange={handleProfileChange}
-                                className="w-full p-2 border rounded-lg"
-                                placeholder="Your nationality"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Interests/Research Areas</label>
-                            <input
-                                type="text"
-                                name="interests"
-                                value={studentProfile.interests}
-                                onChange={handleProfileChange}
-                                className="w-full p-2 border rounded-lg"
-                                placeholder="e.g., Machine Learning, Robotics"
-                            />
-                        </div>
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-medium mb-1">Achievements</label>
-                            <textarea
-                                name="achievements"
-                                value={studentProfile.achievements}
-                                onChange={handleProfileChange}
-                                className="w-full p-2 border rounded-lg"
-                                placeholder="List your academic achievements, awards, publications..."
-                                rows="3"
-                            />
-                        </div>
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold">Your Profile for Scholarship Matching</h2>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                        Data from your profile • <a href="/profile" className="text-blue-600 hover:text-blue-800 underline">Edit Profile</a>
                     </div>
-                    <div className="flex justify-end">
-                        <Button type="submit" disabled={isLoading}>
-                            {isLoading ? 'Searching...' : 'Search Scholarships'}
-                        </Button>
+                </div>
+                
+                {/* Profile Summary */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div>
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Name:</span>
+                        <p className="text-gray-900 dark:text-white">{studentProfile.name || 'Not specified'}</p>
                     </div>
-                </form>
+                    <div>
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Education Level:</span>
+                        <p className="text-gray-900 dark:text-white">{studentProfile.educationLevel || 'Not specified'}</p>
+                    </div>
+                    <div>
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">GPA:</span>
+                        <p className="text-gray-900 dark:text-white">{studentProfile.gpa || 'Not specified'}</p>
+                    </div>
+                    <div>
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Major:</span>
+                        <p className="text-gray-900 dark:text-white">{studentProfile.majorField || 'Not specified'}</p>
+                    </div>
+                    <div>
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Nationality:</span>
+                        <p className="text-gray-900 dark:text-white">{studentProfile.nationality || 'Not specified'}</p>
+                    </div>
+                    <div>
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Interests:</span>
+                        <p className="text-gray-900 dark:text-white">{studentProfile.interests || 'Not specified'}</p>
+                    </div>
+                    {studentProfile.achievements && (
+                        <div className="md:col-span-2 lg:col-span-3">
+                            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Achievements:</span>
+                            <p className="text-gray-900 dark:text-white">{studentProfile.achievements}</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                        {!studentProfile.name || !studentProfile.educationLevel || !studentProfile.majorField ? (
+                            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                                <span>Complete your profile for better scholarship matching</span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span>Profile looks good for scholarship matching!</span>
+                            </div>
+                        )}
+                    </div>
+                    <Button 
+                        onClick={handleSearch} 
+                        disabled={isLoading}
+                        className="w-full sm:w-auto"
+                    >
+                        {isLoading ? 'Searching...' : 'Find Matching Scholarships'}
+                    </Button>
+                </div>
             </Card>
 
             {isLoading && (

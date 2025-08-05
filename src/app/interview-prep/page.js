@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
+import { SERVER_CONFIG } from '@/config';
 import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
 
@@ -260,12 +261,12 @@ const InterviewPrepPage = () => {
         try {
             // Fetch both types of questions in parallel
             const [previousResponse, programmingResponse] = await Promise.all([
-                fetch('http://localhost:8080/getPreviousYearQuestions', {
+                fetch(`${SERVER_CONFIG.INTERVIEW_API_BASE_URL}/getPreviousYearQuestions`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ company, role })
                 }),
-                fetch('http://localhost:8080/getProgrammingQuestions', {
+                fetch(`${SERVER_CONFIG.INTERVIEW_API_BASE_URL}/getProgrammingQuestions`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ company, role })
@@ -347,7 +348,7 @@ const InterviewPrepPage = () => {
 
         } catch (error) {
             console.error('Error fetching questions:', error);
-            alert(`Network error: Unable to connect to the server. Please ensure the backend server is running on http://localhost:8080\n\nError details: ${error.message}`);
+            alert(`Network error: Unable to connect to the server. Please ensure the backend server is running on ${SERVER_CONFIG.INTERVIEW_API_BASE_URL}\n\nError details: ${error.message}`);
         } finally {
             setIsLoadingPrevious(false);
             setIsLoadingProgramming(false);
@@ -363,7 +364,7 @@ const InterviewPrepPage = () => {
         
         setIsLoadingPrevious(true);
         try {
-            const response = await fetch('http://localhost:8080/getPreviousYearQuestions', {
+            const response = await fetch(`${SERVER_CONFIG.INTERVIEW_API_BASE_URL}/getPreviousYearQuestions`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ company, role })
@@ -408,7 +409,7 @@ const InterviewPrepPage = () => {
         
         setIsLoadingProgramming(true);
         try {
-            const response = await fetch('http://localhost:8080/getProgrammingQuestions', {
+            const response = await fetch(`${SERVER_CONFIG.INTERVIEW_API_BASE_URL}/getProgrammingQuestions`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ company, role })

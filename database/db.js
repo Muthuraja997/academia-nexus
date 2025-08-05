@@ -4,6 +4,13 @@ require('dotenv').config({ path: '.env.local' });
 const mysql = require('mysql2/promise');
 const { pool } = require('./mysql-config');
 
+// Default configuration
+const DB_CONFIG = {
+    DEFAULT_LIMIT: parseInt(process.env.DB_DEFAULT_LIMIT) || 20,
+    MAX_LIMIT: parseInt(process.env.DB_MAX_LIMIT) || 100,
+    PAGE_SIZE: parseInt(process.env.DB_PAGE_SIZE) || 10,
+};
+
 class Database {
     constructor() {
         this.pool = pool;
@@ -137,20 +144,31 @@ class Database {
         ]);
     }
 
-    async getUserActivities(userId, limit = 50) {
+    async getUserActivities(userId, limit = DB_CONFIG.DEFAULT_LIMIT) {
+        if (!userId) {
+            console.warn('getUserActivities called with undefined userId');
+            return [];
+        }
+        
+        const limitValue = parseInt(limit) || DB_CONFIG.DEFAULT_LIMIT;
         const sql = `
             SELECT * FROM student_activities 
             WHERE user_id = ? 
             ORDER BY created_at DESC 
-            LIMIT ?
+            LIMIT ${limitValue}
         `;
-        const activities = await this.query(sql, [userId, limit]);
-        return activities.map(activity => ({
-            ...activity,
-            activity_details: typeof activity.activity_details === 'string' 
-                ? JSON.parse(activity.activity_details || '{}')
-                : activity.activity_details || {}
-        }));
+        try {
+            const activities = await this.query(sql, [parseInt(userId)]);
+            return activities.map(activity => ({
+                ...activity,
+                activity_details: typeof activity.activity_details === 'string' 
+                    ? JSON.parse(activity.activity_details || '{}')
+                    : activity.activity_details || {}
+            }));
+        } catch (error) {
+            console.error('Error in getUserActivities:', error);
+            return [];
+        }
     }
 
     // Test results
@@ -167,49 +185,74 @@ class Database {
         ]);
     }
 
-    async getUserTestResults(userId, limit = 20) {
+    async getUserTestResults(userId, limit = DB_CONFIG.DEFAULT_LIMIT) {
+        if (!userId) {
+            console.warn('getUserTestResults called with undefined userId');
+            return [];
+        }
+        
+        const limitValue = parseInt(limit) || DB_CONFIG.DEFAULT_LIMIT;
         const sql = `
             SELECT * FROM test_results 
             WHERE user_id = ? 
             ORDER BY created_at DESC 
-            LIMIT ?
+            LIMIT ${limitValue}
         `;
-        const results = await this.query(sql, [userId, limit]);
-        return results.map(result => ({
-            ...result,
-            answers_data: JSON.parse(result.answers_data || '{}'),
-            feedback_data: JSON.parse(result.feedback_data || '{}')
-        }));
+        try {
+            const results = await this.query(sql, [parseInt(userId)]);
+            return results.map(result => ({
+                ...result,
+                answers_data: JSON.parse(result.answers_data || '{}'),
+                feedback_data: JSON.parse(result.feedback_data || '{}')
+            }));
+        } catch (error) {
+            console.error('Error in getUserTestResults:', error);
+            return [];
+        }
     }
 
     // Communication sessions
     async saveCommunicationSession(userId, sessionData) {
-        const { sessionDuration, totalExchanges, topicsCovered, feedbackScore, improvementAreas, sessionTranscript } = sessionData;
+        const { sessionType, duration, transcript, feedback, score } = sessionData;
         const sql = `
             INSERT INTO communication_sessions 
-            (user_id, session_duration, total_exchanges, topics_covered, feedback_score, improvement_areas, session_transcript)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (user_id, session_type, duration, transcript, feedback, score)
+            VALUES (?, ?, ?, ?, ?, ?)
         `;
         return await this.run(sql, [
-            userId, sessionDuration, totalExchanges, JSON.stringify(topicsCovered),
-            feedbackScore, JSON.stringify(improvementAreas), JSON.stringify(sessionTranscript)
+            userId, 
+            sessionType || 'practice', 
+            duration || 0, 
+            transcript || '',
+            feedback ? JSON.stringify(feedback) : null, 
+            score || null
         ]);
     }
 
-    async getUserCommunicationSessions(userId, limit = 20) {
+    async getUserCommunicationSessions(userId, limit = DB_CONFIG.DEFAULT_LIMIT) {
+        if (!userId) {
+            console.warn('getUserCommunicationSessions called with undefined userId');
+            return [];
+        }
+        
+        const limitValue = parseInt(limit) || DB_CONFIG.DEFAULT_LIMIT;
         const sql = `
             SELECT * FROM communication_sessions 
             WHERE user_id = ? 
             ORDER BY created_at DESC 
-            LIMIT ?
+            LIMIT ${limitValue}
         `;
-        const sessions = await this.query(sql, [userId, limit]);
-        return sessions.map(session => ({
-            ...session,
-            topics_covered: JSON.parse(session.topics_covered || '[]'),
-            improvement_areas: JSON.parse(session.improvement_areas || '[]'),
-            session_transcript: JSON.parse(session.session_transcript || '[]')
-        }));
+        try {
+            const sessions = await this.query(sql, [parseInt(userId)]);
+            return sessions.map(session => ({
+                ...session,
+                feedback: session.feedback ? JSON.parse(session.feedback) : {},
+                transcript: session.transcript || ''
+            }));
+        } catch (error) {
+            console.error('Error in getUserCommunicationSessions:', error);
+            return [];
+        }
     }
 
     // User preferences
@@ -269,7 +312,7 @@ class Database {
                 COUNT(DISTINCT tr.id) as total_tests,
                 AVG(tr.score_percentage) as avg_test_score,
                 COUNT(DISTINCT cs.id) as communication_sessions,
-                AVG(cs.feedback_score) as avg_communication_score,
+                AVG(cs.score) as avg_communication_score,
                 SUM(ua.points_earned) as total_points
             FROM users u 
             LEFT JOIN student_activities sa ON u.id = sa.user_id
@@ -284,18 +327,31 @@ class Database {
     }
 
     // Additional helper methods for dashboard and authentication
-    async getRecentActivities(userId, limit = 10) {
+    async getRecentActivities(userId, limit = DB_CONFIG.PAGE_SIZE) {
+        if (!userId) {
+            console.warn('getRecentActivities called with undefined userId');
+            return [];
+        }
+        
+        const limitValue = parseInt(limit) || DB_CONFIG.PAGE_SIZE;
         const sql = `
             SELECT * FROM student_activities 
             WHERE user_id = ? 
             ORDER BY created_at DESC 
-            LIMIT ?
+            LIMIT ${limitValue}
         `;
-        const activities = await this.query(sql, [userId, limit]);
-        return activities.map(activity => ({
-            ...activity,
-            activity_details: JSON.parse(activity.activity_details || '{}')
-        }));
+        try {
+            const activities = await this.query(sql, [parseInt(userId)]);
+            return activities.map(activity => ({
+                ...activity,
+                activity_details: typeof activity.activity_details === 'string' 
+                    ? JSON.parse(activity.activity_details || '{}')
+                    : activity.activity_details || {}
+            }));
+        } catch (error) {
+            console.error('Error in getRecentActivities:', error);
+            return [];
+        }
     }
 
     async getUserActivityCount(userId) {
@@ -313,7 +369,9 @@ class Database {
         const activities = await this.query(sql, [userId, sinceDate]);
         return activities.map(activity => ({
             ...activity,
-            activity_details: JSON.parse(activity.activity_details || '{}')
+            activity_details: typeof activity.activity_details === 'string' 
+                ? JSON.parse(activity.activity_details || '{}')
+                : activity.activity_details || {}
         }));
     }
 
@@ -429,41 +487,62 @@ class Database {
             timestamp: new Date().toISOString()
         };
 
-        return await this.run(sql, [
-            userId, 
-            activityType, 
+        // Ensure no undefined values with additional debugging
+        const params = [
+            parseInt(userId) || null, 
+            activityType || 'unknown', 
             JSON.stringify(enhancedDetails), 
-            sessionDuration, 
-            score, 
-            company, 
-            jobRole
-        ]);
+            parseInt(sessionDuration) || 0, 
+            score ? parseFloat(score) : null, 
+            company || null, 
+            jobRole || null
+        ];
+
+        // Debug log to identify undefined values
+        console.log('🔍 logEnhancedActivity params:', params.map((p, i) => `${i}: ${p} (${typeof p})`));
+
+        return await this.run(sql, params);
     }
 
     // Get activity patterns for career analysis
     async getActivityPatterns(userId) {
+        if (!userId) {
+            console.warn('getActivityPatterns called with undefined userId');
+            return [];
+        }
+        
         const sql = `
             SELECT 
                 activity_type,
                 COUNT(*) as frequency,
                 AVG(score) as avg_score,
-                AVG(session_duration) as avg_duration,
-                activity_details
+                AVG(session_duration) as avg_duration
             FROM student_activities 
             WHERE user_id = ? 
             GROUP BY activity_type
             ORDER BY frequency DESC
         `;
         
-        const patterns = await this.query(sql, [userId]);
-        return patterns.map(pattern => ({
-            ...pattern,
-            activity_details: JSON.parse(pattern.activity_details || '{}')
-        }));
+        try {
+            const patterns = await this.query(sql, [parseInt(userId)]);
+            return patterns.map(pattern => ({
+                ...pattern,
+                avg_score: pattern.avg_score || 0,
+                avg_duration: pattern.avg_duration || 0
+            }));
+        } catch (error) {
+            console.error('Error in getActivityPatterns:', error);
+            return [];
+        }
     }
 
     // Get skill progression over time
     async getSkillProgression(userId) {
+        if (!userId) {
+            console.warn('getSkillProgression called with undefined userId');
+            return [];
+        }
+        
         const sql = `
             SELECT 
                 DATE(created_at) as date,
@@ -475,25 +554,28 @@ class Database {
             ORDER BY created_at ASC
         `;
         
-        const activities = await this.query(sql, [userId]);
-        return activities.map(activity => ({
-            ...activity,
-            activity_details: JSON.parse(activity.activity_details || '{}')
-        }));
+        try {
+            const activities = await this.query(sql, [parseInt(userId)]);
+            return activities.map(activity => ({
+                ...activity,
+                activity_details: typeof activity.activity_details === 'string' 
+                    ? JSON.parse(activity.activity_details || '{}')
+                    : activity.activity_details || {}
+            }));
+        } catch (error) {
+            console.error('Error in getSkillProgression:', error);
+            return [];
+        }
     }
 
     // Close database connection
-    close() {
-        return new Promise((resolve) => {
-            this.db.close((err) => {
-                if (err) {
-                    console.error('Error closing database:', err.message);
-                } else {
-                    console.log('Database connection closed');
-                }
-                resolve();
-            });
-        });
+    async close() {
+        try {
+            await this.pool.end();
+            console.log('Database connection pool closed');
+        } catch (error) {
+            console.error('Error closing database pool:', error.message);
+        }
     }
 
     // User Management Methods

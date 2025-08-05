@@ -2,7 +2,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { IconDashboard, IconTest, IconScholarship, IconPrediction, IconInterview, IconChat, IconStudy } from '../common/Icons';
+import { IconDashboard, IconTest, IconScholarship, IconPrediction, IconInterview, IconChat, IconStudy, IconProfile } from '../common/Icons';
 
 // A helper function to combine class names.
 const cn = (...classes) => classes.filter(Boolean).join(' ');
@@ -11,6 +11,7 @@ const cn = (...classes) => classes.filter(Boolean).join(' ');
 // The new "Communication" and "Study Assistant" items have been added here.
 const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: IconDashboard },
+    { href: '/profile', label: 'Profile', icon: IconProfile },
     { href: '/tests', label: 'Test Agent', icon: IconTest },
     { href: '/study', label: 'Study Assistant', icon: IconStudy },
     { href: '/scholarships', label: 'Scholarships', icon: IconScholarship },

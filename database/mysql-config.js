@@ -11,7 +11,10 @@ const dbConfig = {
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'academia_nexus',
     charset: 'utf8mb4',
-    connectionLimit: 10
+    connectionLimit: 100,
+    acquireTimeout: 60000,
+    timeout: 60000,
+    reconnect: true
 };
 
 // Create connection pool

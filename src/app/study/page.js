@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
+import { SERVER_CONFIG, API_ENDPOINTS } from '@/config';
 import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
 
@@ -31,7 +32,7 @@ const studyAssistant = {
     },
 
     async getMCPResponse(topic) {
-        const response = await fetch('http://localhost:8081/mcp/tools/call', {
+        const response = await fetch(`${SERVER_CONFIG.STUDY_API_BASE_URL}${API_ENDPOINTS.STUDY_MCP_CALL}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -386,7 +387,7 @@ const StudyPage = () => {
     // Check if AI is available
     const checkAIStatus = async () => {
         try {
-            const response = await fetch('http://localhost:8081/health');
+            const response = await fetch(`${SERVER_CONFIG.STUDY_API_BASE_URL}${API_ENDPOINTS.STUDY_HEALTH}`);
             if (response.ok) {
                 const data = await response.json();
                 setAiStatus({

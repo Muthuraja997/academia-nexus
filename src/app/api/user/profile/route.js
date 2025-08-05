@@ -41,13 +41,40 @@ async function handler(request) {
             // Validate and sanitize updates
             const allowedFields = [
                 'first_name', 'last_name', 'university', 'major', 
-                'year_of_study', 'phone', 'bio'
+                'year_of_study', 'phone', 'bio', 'date_of_birth',
+                'nationality', 'gpa', 'interests', 'achievements',
+                'skills', 'linkedin_url', 'github_url', 'portfolio_url',
+                'career_goals', 'education_level', 'graduation_year'
             ];
             
             const sanitizedUpdates = {};
             for (const [key, value] of Object.entries(updates)) {
                 if (allowedFields.includes(key)) {
-                    sanitizedUpdates[key] = value;
+                    // Convert empty strings to null for database
+                    const sanitizedValue = value === '' ? null : value;
+                    
+                    // Special validation for specific fields
+                    if (key === 'gpa' && sanitizedValue) {
+                        const gpaNum = parseFloat(sanitizedValue);
+                        if (gpaNum >= 0 && gpaNum <= 4.0) {
+                            sanitizedUpdates[key] = gpaNum;
+                        }
+                    } else if (key === 'graduation_year' && sanitizedValue) {
+                        const year = parseInt(sanitizedValue);
+                        if (year >= 2020 && year <= 2030) {
+                            sanitizedUpdates[key] = year;
+                        }
+                    } else if (key.includes('_url') && sanitizedValue) {
+                        // Basic URL validation
+                        try {
+                            new URL(sanitizedValue);
+                            sanitizedUpdates[key] = sanitizedValue;
+                        } catch {
+                            // Skip invalid URLs
+                        }
+                    } else {
+                        sanitizedUpdates[key] = sanitizedValue;
+                    }
                 }
             }
 

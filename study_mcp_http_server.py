@@ -31,8 +31,42 @@ else:
     GEMINI_AVAILABLE = False
     logger.warning("GEMINI_API_KEY environment variable not found. Using fallback knowledge base.")
 
-# Import the fallback study server functions
-from study_mcp_server import search_knowledge_base, STUDY_KNOWLEDGE_BASE
+# Fallback knowledge base
+STUDY_KNOWLEDGE_BASE = {
+    "programming": {
+        "python": "Python is a versatile programming language great for beginners and experts alike.",
+        "javascript": "JavaScript is essential for web development and runs in browsers and servers.",
+        "data_structures": "Understanding arrays, lists, dictionaries, and trees is fundamental to programming."
+    },
+    "mathematics": {
+        "algebra": "Algebra involves working with variables and equations to solve problems.",
+        "calculus": "Calculus deals with rates of change and areas under curves.",
+        "statistics": "Statistics helps analyze data and make informed decisions."
+    },
+    "science": {
+        "physics": "Physics studies matter, energy, and their interactions in the universe.",
+        "chemistry": "Chemistry explores the composition and behavior of matter.",
+        "biology": "Biology is the study of living organisms and life processes."
+    }
+}
+
+def search_knowledge_base(query: str, subject: str = None) -> str:
+    """Search the fallback knowledge base"""
+    query_lower = query.lower()
+    
+    if subject and subject.lower() in STUDY_KNOWLEDGE_BASE:
+        subject_data = STUDY_KNOWLEDGE_BASE[subject.lower()]
+        for topic, content in subject_data.items():
+            if topic in query_lower or any(word in query_lower for word in topic.split('_')):
+                return content
+    
+    # Search across all subjects
+    for subject_name, subject_data in STUDY_KNOWLEDGE_BASE.items():
+        for topic, content in subject_data.items():
+            if topic in query_lower or any(word in query_lower for word in topic.split('_')):
+                return content
+    
+    return "I don't have specific information about that topic. Try asking about programming, mathematics, or science topics."
 
 app = FastAPI(title="Study MCP HTTP Server", version="1.0.0")
 

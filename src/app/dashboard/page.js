@@ -1,654 +1,341 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
 import { LineChart, BarChart, PieChart, ProgressRing } from '@/components/common/Charts';
 import Link from 'next/link';
+import PersonalizedWelcome from '@/components/dashboard/SimplifiedPersonalizedWelcome';
+import SimplifiedLearningPatterns from '@/components/dashboard/SimplifiedLearningPatterns';
 
-const DashboardPage = () => {
-    const { user } = useAuth();
-    const {
-        activities,
-        testResults,
-        communicationSessions,
-        achievements,
-        userStats,
-        careerInsights,
-        loading,
-        trackPageVisit,
-        fetchLatestData
-    } = useData();
+const ANALYTICS_API_BASE = 'http://localhost:8082/api/dashboard';
 
-    const [pageStartTime] = useState(Date.now());
-    const [studyHistory, setStudyHistory] = useState([]);
-    const [studyReflection, setStudyReflection] = useState(null);
+export const useSimplifiedDashboardAnalytics = (userId) => {
+  const [insights, setInsights] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-    useEffect(() => {
-        if (user) {
-            // Track page visit
-            trackPageVisit('dashboard', 0);
-            
-            // Load study history for reflection
-            loadStudyData();
-            
-            // Track page duration on unmount
-            return () => {
-                const duration = Math.round((Date.now() - pageStartTime) / 1000);
-                trackPageVisit('dashboard', duration);
-            };
+  const fetchInsights = useCallback(async () => {
+    if (!userId) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`${ANALYTICS_API_BASE}/insights/${userId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setInsights(data);
+    } catch (err) {
+      console.error('Error fetching dashboard insights:', err);
+      setError(err.message);
+      // Provide fallback data
+      setInsights({
+        personalizedGreeting: `Welcome back! Ready to continue your learning journey?`,
+        learningMomentum: {
+          currentStreak: 0,
+          weeklyProgress: 0,
+          recommendedNextAction: "Start your first study session to build momentum!"
+        },
+        smartRecommendations: [
+          "Complete your profile to get personalized recommendations",
+          "Try the communication practice module",
+          "Explore available scholarships"
+        ],
+        learningPatterns: {
+          preferredStudyTime: "Not enough data",
+          strongestSubject: "To be determined",
+          improvementAreas: ["Complete assessments to identify areas"]
         }
-    }, [user, pageStartTime]); // Removed trackPageVisit from dependencies
-
-    const loadStudyData = () => {
-        if (!user?.id || typeof window === 'undefined') return;
-        
-        try {
-            const saved = localStorage.getItem(`studyHistory_${user.id}`);
-            if (saved) {
-                const history = JSON.parse(saved);
-                setStudyHistory(history);
-                generateStudyReflection(history);
-            }
-        } catch (error) {
-            console.error('Error loading study data:', error);
-        }
-    };
-
-    const generateStudyReflection = (history) => {
-        if (!history || history.length === 0) return;
-
-        // Study patterns analysis
-        const studyTopics = {};
-        const careerInterests = new Set();
-        let totalStudyTime = 0;
-        const recentStudies = history.filter(study => {
-            const studyDate = new Date(study.timestamp);
-            const weekAgo = new Date();
-            weekAgo.setDate(weekAgo.getDate() - 7);
-            return studyDate >= weekAgo;
-        });
-
-        history.forEach(study => {
-            studyTopics[study.topic] = (studyTopics[study.topic] || 0) + 1;
-            totalStudyTime += study.duration || 0;
-            
-            if (study.response?.careerPaths) {
-                study.response.careerPaths.forEach(career => careerInterests.add(career));
-            }
-        });
-
-        const topTopics = Object.entries(studyTopics)
-            .sort(([,a], [,b]) => b - a)
-            .slice(0, 3)
-            .map(([topic, count]) => ({ topic, count }));
-
-        const avgStudyTime = Math.round(totalStudyTime / history.length);
-        
-        setStudyReflection({
-            totalSessions: history.length,
-            recentSessions: recentStudies.length,
-            topTopics,
-            careerInterests: Array.from(careerInterests).slice(0, 5),
-            avgStudyTime,
-            weeklyTrend: recentStudies.length > 0 ? 'increasing' : 'stable',
-            studyStreak: calculateStudyStreak(history),
-            learningFocus: identifyLearningFocus(topTopics)
-        });
-    };
-
-    const calculateStudyStreak = (history) => {
-        if (history.length === 0) return 0;
-        
-        const today = new Date();
-        let streak = 0;
-        let currentDate = new Date(today);
-        
-        for (let i = 0; i < 30; i++) { // Check last 30 days
-            const dateStr = currentDate.toISOString().split('T')[0];
-            const hasStudy = history.some(study => 
-                study.timestamp.startsWith(dateStr)
-            );
-            
-            if (hasStudy) {
-                streak++;
-            } else if (streak > 0) {
-                break; // Streak broken
-            }
-            
-            currentDate.setDate(currentDate.getDate() - 1);
-        }
-        
-        return streak;
-    };
-
-    const identifyLearningFocus = (topTopics) => {
-        if (topTopics.length === 0) return 'Explore New Topics';
-        
-        const primaryTopic = topTopics[0].topic.toLowerCase();
-        
-        if (primaryTopic.includes('machine learning') || primaryTopic.includes('ai')) {
-            return 'AI & Machine Learning';
-        } else if (primaryTopic.includes('data')) {
-            return 'Data Science';
-        } else if (primaryTopic.includes('physics') || primaryTopic.includes('quantum')) {
-            return 'Physics & Sciences';
-        } else if (primaryTopic.includes('calculus') || primaryTopic.includes('math')) {
-            return 'Mathematics';
-        } else if (primaryTopic.includes('biology') || primaryTopic.includes('genetics')) {
-            return 'Life Sciences';
-        } else {
-            return 'Interdisciplinary Learning';
-        }
-    };
-
-    const generateChartData = () => {
-        // Activity trend over last 7 days
-        const last7Days = Array.from({ length: 7 }, (_, i) => {
-            const date = new Date();
-            date.setDate(date.getDate() - (6 - i));
-            return date.toISOString().split('T')[0];
-        });
-
-        const activityTrend = last7Days.map(date => {
-            const dayActivities = activities.filter(a => 
-                a.created_at && a.created_at.startsWith(date)
-            );
-            return {
-                label: new Date(date).toLocaleDateString('en', { weekday: 'short' }),
-                value: dayActivities.length
-            };
-        });
-
-        // Activity type distribution
-        const activityTypes = {};
-        activities.forEach(activity => {
-            const type = activity.activity_type || 'Unknown';
-            activityTypes[type] = (activityTypes[type] || 0) + 1;
-        });
-
-        const activityDistribution = Object.entries(activityTypes).map(([type, count]) => ({
-            label: type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
-            value: count
-        }));
-
-        // Performance over time
-        const performanceData = testResults.slice(0, 10).reverse().map((test, index) => ({
-            label: `Test ${index + 1}`,
-            value: test.score_percentage || 0
-        }));
-
-        // Skills practice frequency
-        const skillsData = [
-            { label: 'Study Sessions', value: studyHistory.length },
-            { label: 'Communication', value: communicationSessions.length },
-            { label: 'Technical', value: testResults.filter(t => t.test_title?.toLowerCase().includes('technical')).length },
-            { label: 'Interview', value: testResults.filter(t => t.test_title?.toLowerCase().includes('interview')).length },
-            { label: 'General', value: activities.filter(a => a.activity_type === 'page_visit').length }
-        ].filter(item => item.value > 0);
-
-        return {
-            activityTrend,
-            activityDistribution,
-            performanceData,
-            skillsData
-        };
-    };
-
-    const getEngagementColor = (level) => {
-        switch (level) {
-            case 'high': return 'text-green-600 bg-green-100 dark:bg-green-900 dark:text-green-300';
-            case 'medium': return 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-300';
-            default: return 'text-red-600 bg-red-100 dark:bg-red-900 dark:text-red-300';
-        }
-    };
-
-    const getTrendIcon = (trend) => {
-        switch (trend) {
-            case 'improving': return '📈';
-            case 'declining': return '📉';
-            default: return '➡️';
-        }
-    };
-
-    const calculateOverallProgress = () => {
-        const totalActivities = activities.length;
-        const testScore = testResults.length > 0 ? 
-            testResults.reduce((sum, test) => sum + (test.score_percentage || 0), 0) / testResults.length : 0;
-        const achievementScore = achievements.length * 5; // 5 points per achievement
-        
-        return Math.min(100, (totalActivities * 2) + (testScore * 0.3) + achievementScore);
-    };
-
-    if (loading && !activities.length) {
-        return (
-            <div className="flex items-center justify-center min-h-96">
-                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-            </div>
-        );
+      });
+    } finally {
+      setLoading(false);
     }
+  }, [userId]);
 
-    const chartData = generateChartData();
-    const overallProgress = calculateOverallProgress();
+  useEffect(() => {
+    fetchInsights();
+  }, [fetchInsights]);
 
-    return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">
-                        Welcome Back, {user?.full_name || user?.username}! 👋
-                    </h1>
-                    <p className="text-gray-600 dark:text-gray-400">
-                        Here's your learning journey overview
-                    </p>
-                </div>
-                <Button onClick={fetchLatestData} variant="outline" size="sm">
-                    🔄 Refresh Data
-                </Button>
-            </div>
-
-            {/* Overview Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="p-6 text-center">
-                    <div className="text-3xl font-bold text-blue-600 mb-2">
-                        {activities.length}
-                    </div>
-                    <div className="text-sm text-gray-600">Total Activities</div>
-                    <div className="text-xs text-green-600 mt-1">
-                        +{activities.filter(a => {
-                            const today = new Date().toISOString().split('T')[0];
-                            return a.created_at?.startsWith(today);
-                        }).length} today
-                    </div>
-                </Card>
-
-                <Card className="p-6 text-center">
-                    <div className="text-3xl font-bold text-green-600 mb-2">
-                        {testResults.length > 0 ? 
-                            Math.round(testResults.reduce((sum, test) => sum + (test.score_percentage || 0), 0) / testResults.length) : 0}%
-                    </div>
-                    <div className="text-sm text-gray-600">Avg Test Score</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                        {testResults.length} tests completed
-                    </div>
-                </Card>
-
-                <Card className="p-6 text-center">
-                    <div className="text-3xl font-bold text-purple-600 mb-2">
-                        {userStats.learningStreak?.current || 0}
-                    </div>
-                    <div className="text-sm text-gray-600">Day Streak 🔥</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                        Best: {userStats.learningStreak?.longest || 0} days
-                    </div>
-                </Card>
-
-                <Card className="p-6 text-center">
-                    <div className="text-3xl font-bold text-orange-600 mb-2">
-                        {achievements.length}
-                    </div>
-                    <div className="text-sm text-gray-600">Achievements 🏆</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                        {userStats.total_points || 0} total points
-                    </div>
-                </Card>
-            </div>
-
-            {/* Progress and Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Overall Progress */}
-                <Card className="p-6 text-center">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
-                        Overall Progress
-                    </h3>
-                    <ProgressRing 
-                        percentage={overallProgress}
-                        title="Completion Level"
-                        color="#3B82F6"
-                    />
-                    <div className="mt-4 text-sm text-gray-600">
-                        Keep going! You're doing great 🚀
-                    </div>
-                </Card>
-
-                {/* Activity Trend */}
-                <div className="lg:col-span-2">
-                    {chartData.activityTrend.length > 0 && (
-                        <LineChart
-                            data={chartData.activityTrend}
-                            title="7-Day Activity Trend"
-                            color="#10B981"
-                        />
-                    )}
-                </div>
-            </div>
-
-            {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {chartData.activityDistribution.length > 0 && (
-                    <PieChart
-                        data={chartData.activityDistribution}
-                        title="Activity Types Distribution"
-                    />
-                )}
-
-                {chartData.performanceData.length > 0 && (
-                    <BarChart
-                        data={chartData.performanceData}
-                        title="Recent Test Performance"
-                        color="#8B5CF6"
-                    />
-                )}
-            </div>
-
-            {/* Study Reflection Section */}
-            {studyReflection && (
-                <Card className="p-6 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900 dark:to-pink-900">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                        📚 Study Activity Reflection
-                    </h2>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                        <div className="text-center">
-                            <div className="text-3xl font-bold text-purple-600 mb-1">
-                                {studyReflection.totalSessions}
-                            </div>
-                            <div className="text-sm text-gray-600">Total Study Sessions</div>
-                            {studyReflection.recentSessions > 0 && (
-                                <div className="text-xs text-green-600 mt-1">
-                                    +{studyReflection.recentSessions} this week
-                                </div>
-                            )}
-                        </div>
-                        
-                        <div className="text-center">
-                            <div className="text-3xl font-bold text-blue-600 mb-1">
-                                {studyReflection.studyStreak}
-                            </div>
-                            <div className="text-sm text-gray-600">Day Study Streak 🔥</div>
-                            <div className="text-xs text-gray-500 mt-1">
-                                Keep it up!
-                            </div>
-                        </div>
-                        
-                        <div className="text-center">
-                            <div className="text-3xl font-bold text-orange-600 mb-1">
-                                {studyReflection.avgStudyTime}
-                            </div>
-                            <div className="text-sm text-gray-600">Avg Minutes/Session</div>
-                            <div className="text-xs text-gray-500 mt-1">
-                                Learning Focus: {studyReflection.learningFocus}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                                Most Studied Topics
-                            </h3>
-                            <div className="space-y-2">
-                                {studyReflection.topTopics.map((item, index) => (
-                                    <div key={index} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg">
-                                        <div>
-                                            <p className="font-medium text-sm capitalize">{item.topic}</p>
-                                            <p className="text-xs text-gray-500">
-                                                {item.count} session{item.count !== 1 ? 's' : ''}
-                                            </p>
-                                        </div>
-                                        <div className="w-12 h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
-                                            <div 
-                                                className="h-full bg-purple-500 rounded-full" 
-                                                style={{ width: `${(item.count / studyReflection.totalSessions) * 100}%` }}
-                                            ></div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div>
-                            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                                Career Interests Discovered
-                            </h3>
-                            <div className="space-y-2">
-                                {studyReflection.careerInterests.map((career, index) => (
-                                    <div key={index} className="p-2 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded text-sm font-medium">
-                                        {career}
-                                    </div>
-                                ))}
-                            </div>
-                            {studyReflection.careerInterests.length === 0 && (
-                                <p className="text-gray-500 text-sm">
-                                    Study more topics to discover career paths!
-                                </p>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="mt-6 p-4 bg-white dark:bg-gray-800 rounded-lg">
-                        <h3 className="font-medium text-sm mb-2">📈 Study Insights & Recommendations</h3>
-                        <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                            {studyReflection.studyStreak >= 7 && (
-                                <p>🎉 Excellent consistency! You've maintained a {studyReflection.studyStreak}-day study streak.</p>
-                            )}
-                            {studyReflection.recentSessions >= 5 && (
-                                <p>⚡ You're on fire! {studyReflection.recentSessions} study sessions this week.</p>
-                            )}
-                            {studyReflection.avgStudyTime >= 20 && (
-                                <p>🎯 Great depth! Your {studyReflection.avgStudyTime}-minute average shows quality learning.</p>
-                            )}
-                            {studyReflection.careerInterests.length >= 3 && (
-                                <p>🌟 Diverse interests! You've explored {studyReflection.careerInterests.length} different career paths.</p>
-                            )}
-                            {studyReflection.totalSessions >= 10 && (
-                                <p>📚 Knowledge seeker! You've completed {studyReflection.totalSessions} study sessions total.</p>
-                            )}
-                            
-                            {/* Personalized recommendations */}
-                            {studyReflection.studyStreak < 3 && (
-                                <p>💡 Try to study a little each day to build momentum and improve retention.</p>
-                            )}
-                            {studyReflection.avgStudyTime < 10 && (
-                                <p>📖 Consider spending more time per session for deeper understanding.</p>
-                            )}
-                            {studyReflection.topTopics.length === 1 && (
-                                <p>🔍 Explore diverse topics to discover new interests and career possibilities!</p>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="mt-4 flex justify-end">
-                        <Link href="/study">
-                            <Button size="sm">Continue Learning →</Button>
-                        </Link>
-                    </div>
-                </Card>
-            )}
-
-            {/* Career Insights */}
-            {careerInsights && (
-                <Card className="p-6">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                        🎯 AI Career Insights
-                    </h2>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {careerInsights.careerDirections?.length > 0 && (
-                            <div>
-                                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                                    Recommended Career Paths
-                                </h3>
-                                <div className="space-y-2">
-                                    {careerInsights.careerDirections.slice(0, 3).map((direction, index) => (
-                                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                                            <div>
-                                                <p className="font-medium text-sm">{direction.direction}</p>
-                                                <p className="text-xs text-gray-500">
-                                                    {direction.examples?.slice(0, 2).join(', ')}
-                                                </p>
-                                            </div>
-                                            <span className="text-xs font-bold text-blue-600">
-                                                {Math.round(direction.confidence)}%
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {careerInsights.strengths?.length > 0 && (
-                            <div>
-                                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                                    Your Top Strengths
-                                </h3>
-                                <div className="space-y-2">
-                                    {careerInsights.strengths.slice(0, 4).map((strength, index) => (
-                                        <div key={index} className="flex items-center justify-between p-2 bg-green-50 dark:bg-green-900 rounded">
-                                            <span className="text-sm font-medium">{strength.skill}</span>
-                                            <span className="text-xs text-green-600 font-bold">
-                                                {strength.score}%
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="mt-6 flex justify-end">
-                        <Link href="/career-path">
-                            <Button size="sm">View Full Career Analysis →</Button>
-                        </Link>
-                    </div>
-                </Card>
-            )}
-
-            {/* Recent Activities */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="p-6">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                        📋 Recent Activities
-                    </h2>
-                    {activities.length > 0 ? (
-                        <div className="space-y-3 max-h-64 overflow-y-auto">
-                            {activities.slice(0, 10).map((activity, index) => (
-                                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                                    <div>
-                                        <p className="font-medium text-sm capitalize">
-                                            {activity.activity_type?.replace('_', ' ') || 'Activity'}
-                                        </p>
-                                        <p className="text-xs text-gray-500">
-                                            {activity.created_at ? new Date(activity.created_at).toLocaleDateString() : 'Recently'}
-                                        </p>
-                                    </div>
-                                    <div className="text-right">
-                                        {activity.score && (
-                                            <span className="text-sm font-bold text-blue-600">
-                                                {activity.score}%
-                                            </span>
-                                        )}
-                                        {activity.session_duration && (
-                                            <p className="text-xs text-gray-500">
-                                                {Math.round(activity.session_duration / 60)}min
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-                            No activities yet. Start practicing to see your progress!
-                        </p>
-                    )}
-                </Card>
-
-                <Card className="p-6">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                        🏆 Recent Achievements
-                    </h2>
-                    {achievements.length > 0 ? (
-                        <div className="space-y-3 max-h-64 overflow-y-auto">
-                            {achievements.slice(0, 8).map((achievement, index) => (
-                                <div key={index} className="flex items-center space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900 rounded-lg">
-                                    <span className="text-2xl">{achievement.badge_icon || '🏆'}</span>
-                                    <div className="flex-1">
-                                        <p className="font-medium text-sm">{achievement.achievement_name}</p>
-                                        <p className="text-xs text-gray-500">
-                                            +{achievement.points_earned} points
-                                        </p>
-                                    </div>
-                                    <div className="text-xs text-gray-500">
-                                        {achievement.earned_at ? new Date(achievement.earned_at).toLocaleDateString() : 'Recent'}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-                            Complete activities to earn achievements!
-                        </p>
-                    )}
-                </Card>
-            </div>
-
-            {/* Quick Actions */}
-            <Card className="p-6 bg-gradient-to-br from-white to-blue-50 dark:from-gray-800 dark:to-gray-900 border-blue-200 dark:border-gray-700">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-                    <span className="text-2xl">🚀</span>
-                    Quick Actions
-                </h2>
-                <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
-                    <Link href="/study" className="group block">
-                        <div className="quick-action-button bg-blue-600 hover:bg-blue-700 text-white rounded-xl p-4 h-24 flex flex-col items-center justify-center text-center transition-all duration-300 transform group-hover:scale-105 group-hover:shadow-xl quick-action-glow">
-                            <div className="text-2xl mb-1">📚</div>
-                            <div className="text-sm font-medium">Study Assistant</div>
-                        </div>
-                    </Link>
-                    <Link href="/communication-practice" className="group block">
-                        <div className="quick-action-button bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl p-4 h-24 flex flex-col items-center justify-center text-center transition-all duration-300 transform group-hover:scale-105 group-hover:shadow-xl">
-                            <div className="text-2xl mb-1">💬</div>
-                            <div className="text-sm font-medium">Communication</div>
-                        </div>
-                    </Link>
-                    <Link href="/tests" className="group block">
-                        <div className="quick-action-button bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl p-4 h-24 flex flex-col items-center justify-center text-center transition-all duration-300 transform group-hover:scale-105 group-hover:shadow-xl">
-                            <div className="text-2xl mb-1">📝</div>
-                            <div className="text-sm font-medium">Take Test</div>
-                        </div>
-                    </Link>
-                    <Link href="/interview-prep" className="group block">
-                        <div className="quick-action-button bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl p-4 h-24 flex flex-col items-center justify-center text-center transition-all duration-300 transform group-hover:scale-105 group-hover:shadow-xl">
-                            <div className="text-2xl mb-1">🎤</div>
-                            <div className="text-sm font-medium">Interview Prep</div>
-                        </div>
-                    </Link>
-                    <Link href="/career-path" className="group block">
-                        <div className="quick-action-button bg-gradient-to-br from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-xl p-4 h-24 flex flex-col items-center justify-center text-center transition-all duration-300 transform group-hover:scale-105 group-hover:shadow-xl">
-                            <div className="text-2xl mb-1">🎯</div>
-                            <div className="text-sm font-medium">Career Analysis</div>
-                        </div>
-                    </Link>
-                    <Link href="/scholarships" className="group block">
-                        <div className="quick-action-button bg-gradient-to-br from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white rounded-xl p-4 h-24 flex flex-col items-center justify-center text-center transition-all duration-300 transform group-hover:scale-105 group-hover:shadow-xl">
-                            <div className="text-2xl mb-1">🎓</div>
-                            <div className="text-sm font-medium">Scholarships</div>
-                        </div>
-                    </Link>
-                </div>
-                
-                {/* Quick Actions Info */}
-                <div className="mt-6 p-4 bg-blue-50 dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-gray-600">
-                    <p className="text-sm text-blue-700 dark:text-blue-300 text-center">
-                        💡 <strong>Tip:</strong> Use these quick actions to jump directly to your favorite features and boost your productivity!
-                    </p>
-                </div>
-            </Card>
-        </div>
-    );
+  return { insights, loading, error, refetch: fetchInsights };
 };
 
-export default DashboardPage;
+export default function Dashboard() {
+  const { user, isAuthenticated } = useAuth();
+  const { updateData } = useData();
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Use the analytics hook
+  const { insights, loading: insightsLoading, error: insightsError } = useSimplifiedDashboardAnalytics(user?.id);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/user/dashboard?userId=${user.id}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setDashboardData(data);
+        updateData(data);
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+        setError(err.message);
+        // Provide fallback data
+        setDashboardData({
+          recentActivities: [],
+          communicationSessions: [],
+          careerAssessments: [],
+          scholarshipApplications: [],
+          studySessions: []
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [isAuthenticated, user, updateData]);
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <Card className="p-8 text-center">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Access Restricted</h2>
+          <p className="text-gray-600 mb-6">Please log in to access your dashboard.</p>
+          <Link href="/auth/login">
+            <Button variant="primary">Go to Login</Button>
+          </Link>
+        </Card>
+      </div>
+    );
+  }
+
+  if (loading || insightsLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-300 rounded w-1/3 mb-6"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="bg-white rounded-lg p-6 shadow-sm">
+                  <div className="h-4 bg-gray-300 rounded w-2/3 mb-4"></div>
+                  <div className="h-20 bg-gray-200 rounded"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            Welcome back, {user?.name || 'Student'}!
+          </h1>
+          <p className="text-gray-600">Here's your personalized learning dashboard</p>
+        </div>
+
+        {/* Error Display */}
+        {(error || insightsError) && (
+          <Card className="mb-6 p-4 border-l-4 border-orange-500 bg-orange-50">
+            <h3 className="text-orange-800 font-semibold mb-2">Notice</h3>
+            <p className="text-orange-700">
+              Some features may not be fully available. We're showing you available data with fallback information.
+            </p>
+          </Card>
+        )}
+
+        {/* Personalized Welcome Section */}
+        <div className="mb-8">
+          <PersonalizedWelcome insights={insights} user={user} />
+        </div>
+
+        {/* Learning Patterns Section */}
+        <div className="mb-8">
+          <SimplifiedLearningPatterns insights={insights} dashboardData={dashboardData} />
+        </div>
+
+        {/* Quick Actions Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Link href="/study">
+            <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-blue-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Study Session</h3>
+                  <p className="text-gray-600 text-sm">Continue learning</p>
+                </div>
+                <div className="text-blue-500 text-2xl">📚</div>
+              </div>
+            </Card>
+          </Link>
+
+          <Link href="/interview-prep">
+            <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-green-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Interview Prep</h3>
+                  <p className="text-gray-600 text-sm">Practice interviews</p>
+                </div>
+                <div className="text-green-500 text-2xl">🎯</div>
+              </div>
+            </Card>
+          </Link>
+
+          <Link href="/communication-practice">
+            <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-purple-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Communication</h3>
+                  <p className="text-gray-600 text-sm">Improve skills</p>
+                </div>
+                <div className="text-purple-500 text-2xl">💬</div>
+              </div>
+            </Card>
+          </Link>
+
+          <Link href="/scholarships">
+            <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-orange-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Scholarships</h3>
+                  <p className="text-gray-600 text-sm">Find opportunities</p>
+                </div>
+                <div className="text-orange-500 text-2xl">🎓</div>
+              </div>
+            </Card>
+          </Link>
+        </div>
+
+        {/* Statistics Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Recent Activities</h3>
+            <div className="space-y-3">
+              {dashboardData?.recentActivities?.slice(0, 3).map((activity, index) => (
+                <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{activity.activity_type}</p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(activity.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="text-xs text-blue-500">
+                    {activity.duration_minutes || 0}min
+                  </div>
+                </div>
+              )) || (
+                <p className="text-gray-500 text-sm">No recent activities</p>
+              )}
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Study Progress</h3>
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-gray-600">Weekly Goal</span>
+                  <span className="text-sm font-medium">75%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="bg-blue-500 h-2 rounded-full" style={{ width: '75%' }}></div>
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-gray-600">This Month</span>
+                  <span className="text-sm font-medium">60%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="bg-green-500 h-2 rounded-full" style={{ width: '60%' }}></div>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Achievements</h3>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-3">
+                <div className="text-yellow-500 text-xl">🏆</div>
+                <div>
+                  <p className="text-sm font-medium text-gray-800">First Study Session</p>
+                  <p className="text-xs text-gray-500">Completed your first session</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="text-blue-500 text-xl">📈</div>
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Progress Tracker</p>
+                  <p className="text-xs text-gray-500">Keep up the good work!</p>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="p-4 text-center">
+            <div className="text-2xl font-bold text-blue-500 mb-1">
+              {dashboardData?.studySessions?.length || 0}
+            </div>
+            <div className="text-sm text-gray-600">Study Sessions</div>
+          </Card>
+
+          <Card className="p-4 text-center">
+            <div className="text-2xl font-bold text-green-500 mb-1">
+              {dashboardData?.communicationSessions?.length || 0}
+            </div>
+            <div className="text-sm text-gray-600">Practice Sessions</div>
+          </Card>
+
+          <Card className="p-4 text-center">
+            <div className="text-2xl font-bold text-purple-500 mb-1">
+              {dashboardData?.careerAssessments?.length || 0}
+            </div>
+            <div className="text-sm text-gray-600">Assessments</div>
+          </Card>
+
+          <Card className="p-4 text-center">
+            <div className="text-2xl font-bold text-orange-500 mb-1">
+              {dashboardData?.scholarshipApplications?.length || 0}
+            </div>
+            <div className="text-sm text-gray-600">Applications</div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}

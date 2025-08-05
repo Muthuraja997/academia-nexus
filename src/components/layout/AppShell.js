@@ -65,17 +65,14 @@ const AppShell = ({ children }) => {
                             <IconMenu className="h-6 w-6" />
                         </button>
                         <h1 className="text-lg font-bold text-gray-800 dark:text-gray-200">{title}</h1>
-                        <div className="flex items-center space-x-2">
+                        <Link href="/profile" className="flex items-center space-x-2">
                             <span className="text-sm text-gray-600 dark:text-gray-400">
                                 {user?.first_name || user?.username}
                             </span>
-                            <button 
-                                onClick={handleLogout}
-                                className="w-8 h-8 rounded-full bg-blue-200 dark:bg-blue-800 flex items-center justify-center font-bold text-blue-700 dark:text-blue-300"
-                            >
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">
                                 {(user?.first_name || user?.username || 'U')[0].toUpperCase()}
-                            </button>
-                        </div>
+                            </div>
+                        </Link>
                     </header>
                 )}
 
@@ -85,9 +82,22 @@ const AppShell = ({ children }) => {
                         <div className="flex items-center justify-between">
                             <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200">{title}</h1>
                             <div className="flex items-center space-x-4">
-                                <span className="text-sm text-gray-600 dark:text-gray-400">
-                                    Welcome, {user?.first_name || user?.username}!
-                                </span>
+                                {/* Profile Dropdown */}
+                                <div className="relative group">
+                                    <Link href="/profile" className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                                            {(user?.first_name || user?.username || 'U')[0].toUpperCase()}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                                {user?.first_name || user?.username}
+                                            </span>
+                                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                View Profile
+                                            </span>
+                                        </div>
+                                    </Link>
+                                </div>
                                 <button 
                                     onClick={handleLogout}
                                     className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 border border-gray-300 rounded-lg hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors"

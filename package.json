@@ -11,8 +11,11 @@
     "db:migrate": "node database/mysql-init.js"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
     "bcryptjs": "^3.0.2",
     "dotenv": "^17.2.1",
+    "flask": "^0.2.0",
+    "flask-cors": "^1.0.0",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.14.3",
     "next": "^14.2.30",

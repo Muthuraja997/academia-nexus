@@ -3,9 +3,18 @@ import { getDatabase } from '../../../../../database/db.js';
 
 async function handler(request) {
     const db = getDatabase();
-    const userId = request.userId;
+    const userId = parseInt(request.userId, 10);
+
+    if (!userId || isNaN(userId)) {
+        return new Response(JSON.stringify({ error: 'Invalid user ID' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
 
     try {
+        console.log(`Dashboard API: Processing request for userId: ${userId}`);
+        
         // Get comprehensive dashboard data
         const [
             user,
